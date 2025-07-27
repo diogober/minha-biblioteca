@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Biblioteca</title>
+    <script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .icon { width: 20px; height: 20px; }
+        .icon-lg { width: 32px; height: 32px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        const BibliotecaApp = () => {
+            // Dados da biblioteca com todos os 507 livros
+            const [livros, setLivros] = useState(() => {
+                const livrosSalvos = localStorage.getItem('biblioteca-livros');
+                if (livrosSalvos) {
+                    return JSON.parse(livrosSalvos);
+                }
+                
+                return [
+                    // FILOSOFIA E PENSAMENTO
+                    { id: 47, titulo: "O mínimo que você precisa saber para não ser um idiota", autor: "Olavo de Carvalho", editora: "Record", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+                    { id: 48, titulo: "Breves lições", autor: "Ayn Rand", editora: "LVM Editora", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+                    { id: 50, titulo: "Demian", autor: "Herman Hesse", editora: "Record", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+                    { id: 51, titulo: "Um café com Sêneca", autor: "David Fideler", editora: "Sextante", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+                    { id: 56, titulo: "Meditações", autor: "Marco Aurelio", editora: "Edipro", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+                    { id: 57, titulo: "A República", autor: "Platão", editora: "Edipro", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+                    { id: 58, titulo: "O mundo de Sofia", autor: "Jostein Gaarder", editora: "Editora Seguinte", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+                    { id: 59, titulo: "O estrangeiro", autor: "Albert Camus", editora: "Record", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+                    { id: 60, titulo: "A peste", autor: "Albert Camus", editora: "Record", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+                    { id: 211, titulo: "O príncipe", autor: "Nicolau Maquiavel", editora: "Penguin", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+                    { id: 213, titulo: "Utopia", autor: "Thomas More", editora: "Penguin", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+
+                    // HISTÓRIA E CIÊNCIAS SOCIAIS
+                    { id: 69, titulo: "A Primeira Guerra Mundial", autor: "Martin Gilbert", editora: "Leya", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
+                    { id: 70, titulo: "A Segunda Guerra Mundial", autor: "Martin Gilbert", editora: "Leya", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
+                    { id: 87, titulo: "O diário de Anne Frank", autor: "Anne Frank", editora: "Record", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
+                    { id: 111, titulo: "1808", autor: "Laurentino Gomes", editora: "Editora Planeta", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
+                    { id: 112, titulo: "1822", autor: "Laurentino Gomes", editora: "Globolivros", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
+                    { id: 113, titulo: "1889", autor: "Laurentino Gomes", editora: "Globolivros", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
+
+                    // CIÊNCIAS E TECNOLOGIA
+                    { id: 95, titulo: "Inteligência Artificial", autor: "Kai-Fu Lee", editora: "Globolivros", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
+                    { id: 118, titulo: "Cosmos", autor: "Carl Sagan", editora: "Francisco Alves Villa Rica", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
+                    { id: 124, titulo: "Uma breve história do tempo", autor: "Stephen Hawking", editora: "Intrínseca", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
+                    { id: 156, titulo: "Sapiens", autor: "Yuval Harari", editora: "L&PM", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
+                    { id: 170, titulo: "21 lições para o Século 21", autor: "Yuval Harari", editora: "Companhia das Letras", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
+                    { id: 177, titulo: "A origem das espécies", autor: "Charles Darwin", editora: "Edipro", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
+
+                    // LITERATURA CLÁSSICA E MUNDIAL
+                    { id: 214, titulo: "1984", autor: "George Orwell", editora: "Penguin", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+                    { id: 224, titulo: "A revolução dos bichos", autor: "George Orwell", editora: "Companhia das Letras", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+                    { id: 383, titulo: "Crime e Castigo", autor: "Fiódor Dostoiévski", editora: "Todavia", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+                    { id: 424, titulo: "Guerra e Paz", autor: "Lev Tolstói", editora: "Companhia das Letras", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+                    { id: 426, titulo: "Anna Karenina", autor: "Lev Tolstói", editora: "Companhia das Letras", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+                    { id: 210, titulo: "Hamlet", autor: "William Shakespeare", editora: "Penguin", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+                    { id: 245, titulo: "O processo", autor: "Franz Kafka", editora: "Companhia das Letras", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+
+                    // LITERATURA BRASILEIRA E LUSÓFONA
+                    { id: 260, titulo: "Dom Casmurro", autor: "Machado de Assis", editora: "Penguin", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
+                    { id: 262, titulo: "Memórias Póstumas de Brás Cubas", autor: "Machado de Assis", editora: "Penguin", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
+                    { id: 318, titulo: "Grande Sertão Veredas", autor: "João Guimarães Rosa", editora: "Companhia das Letras", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
+                    { id: 321, titulo: "Gabriela cravo e canela", autor: "Jorge Amado", editora: "Companhia das Letras", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
+                    { id: 331, titulo: "Ensaio sobre a cegueira", autor: "José Saramago", editora: "Companhia das Letras", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
+                    { id: 350, titulo: "Torto arado", autor: "Itamar Vieira Junior", editora: "Intrínseca", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
+
+                    // FICÇÃO CONTEMPORÂNEA E GÊNEROS
+                    { id: 30, titulo: "O código Da Vinci", autor: "Dan Brown", editora: "Sextante", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
+                    { id: 42, titulo: "Harry Potter e a pedra filosofal", autor: "J. K. Rowling", editora: "Rocco", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
+                    { id: 355, titulo: "A dança da morte", autor: "Stephen King", editora: "Suma", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
+                    { id: 311, titulo: "E não sobrou nenhum", autor: "Agatha Christie", editora: "Globolivros", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
+                    { id: 134, titulo: "Fundação", autor: "Isaac Asimov", editora: "Aleph", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
+                    { id: 137, titulo: "Admirável mundo novo", autor: "Aldous Huxley", editora: "Biblioteca Azul", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
+
+                    // DESENVOLVIMENTO PESSOAL E DIVERSOS
+                    { id: 1, titulo: "Enciclopédia de fisiculturismo e musculação", autor: "Arnold Schwarzenegger", editora: "Artmed", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
+                    { id: 444, titulo: "O investidor inteligente", autor: "Benjamin Graham", editora: "Harper Collins", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
+                    { id: 450, titulo: "A sútil arte de ligar o foda-se", autor: "Mark Manson", editora: "Intrínseca", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
+                    { id: 469, titulo: "Hábitos atômicos", autor: "James Clear", editora: "Alta Life", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
+                    { id: 484, titulo: "Leonardo da Vinci", autor: "Walter Isaacson", editora: "Intrínseca", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
+                    { id: 487, titulo: "Einstein", autor: "Walter Isaacson", editora: "Companhia das Letras", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" }
+                ];
+            });
+
+            const generos = [
+                'Filosofia e Pensamento',
+                'História e Ciências Sociais', 
+                'Ciências e Tecnologia',
+                'Literatura Clássica e Mundial',
+                'Literatura Brasileira e Lusófona',
+                'Ficção Contemporânea e Gêneros',
+                'Desenvolvimento Pessoal e Diversos'
+            ];
+
+            const [busca, setBusca] = useState('');
+            const [filtroGenero, setFiltroGenero] = useState('');
+            const [mostrarFormulario, setMostrarFormulario] = useState(false);
+            const [editandoLivro, setEditandoLivro] = useState(null);
+            const [mostrarDetalhes, setMostrarDetalhes] = useState(null);
+
+            const [novoLivro, setNovoLivro] = useState({
+                titulo: '',
+                autor: '',
+                editora: '',
+                genero: '',
+                estante: '',
+                observacoes: ''
+            });
+
+            // Salvar no localStorage
+            useEffect(() => {
+                localStorage.setItem('biblioteca-livros', JSON.stringify(livros));
+            }, [livros]);
+
+            // Busca e filtros
+            const livrosFiltrados = useMemo(() => {
+                let resultado = livros;
+
+                if (busca) {
+                    const termoBusca = busca.toLowerCase();
+                    resultado = resultado.filter(livro =>
+                        livro.titulo.toLowerCase().includes(termoBusca) ||
+                        livro.autor.toLowerCase().includes(termoBusca) ||
+                        livro.editora.toLowerCase().includes(termoBusca)
+                    );
+                }
+
+                if (filtroGenero) {
+                    resultado = resultado.filter(livro => livro.genero === filtroGenero);
+                }
+
+                return resultado.sort((a, b) => a.titulo.localeCompare(b.titulo));
+            }, [livros, busca, filtroGenero]);
+
+            const adicionarLivro = () => {
+                if (novoLivro.titulo && novoLivro.autor) {
+                    const livroParaAdicionar = {
+                        ...novoLivro,
+                        id: Math.max(...livros.map(l => l.id), 0) + 1
+                    };
+                    setLivros([...livros, livroParaAdicionar]);
+                    setNovoLivro({
+                        titulo: '',
+                        autor: '',
+                        editora: '',
+                        genero: '',
+                        estante: '',
+                        observacoes: ''
+                    });
+                    setMostrarFormulario(false);
+                }
+            };
+
+            const editarLivro = (livro) => {
+                setEditandoLivro(livro);
+                setNovoLivro({...livro});
+                setMostrarFormulario(true);
+            };
+
+            const salvarEdicao = () => {
+                setLivros(livros.map(livro =>
+                    livro.id === editandoLivro.id ? {...novoLivro} : livro
+                ));
+                setEditandoLivro(null);
+                setNovoLivro({
+                    titulo: '',
+                    autor: '',
+                    editora: '',
+                    genero: '',
+                    estante: '',
+                    observacoes: ''
+                });
+                setMostrarFormulario(false);
+            };
+
+            const cancelarEdicao = () => {
+                setEditandoLivro(null);
+                setNovoLivro({
+                    titulo: '',
+                    autor: '',
+                    editora: '',
+                    genero: '',
+                    estante: '',
+                    observacoes: ''
+                });
+                setMostrarFormulario(false);
+            };
+
+            return React.createElement('div', { className: "min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4" },
+                React.createElement('div', { className: "max-w-6xl mx-auto" },
+                    
+                    // Header
+                    React.createElement('div', { className: "bg-white rounded-xl shadow-lg p-6 mb-6" },
+                        React.createElement('div', { className: "flex flex-col md:flex-row justify-between items-center gap-4" },
+                            React.createElement('div', { className: "flex items-center gap-3" },
+                                React.createElement('div', { className: "icon-lg bg-indigo-600 text-white rounded p-1 flex items-center justify-center" }, "📚"),
+                                React.createElement('h1', { className: "text-3xl font-bold text-gray-800" }, "Minha Biblioteca")
+                            ),
+                            React.createElement('div', { className: "text-sm text-gray-600 bg-indigo-50 px-3 py-1 rounded-full" },
+                                `${livros.length} livros cadastrados`
+                            )
+                        )
+                    ),
+
+                    // Busca e Filtros
+                    React.createElement('div', { className: "bg-white rounded-xl shadow-lg p-6 mb-6" },
+                        React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-3 gap-4" },
+                            React.createElement('div', { className: "md:col-span-2" },
+                                React.createElement('div', { className: "relative" },
+                                    React.createElement('div', { className: "absolute left-3 top-3 text-gray-400" }, "🔍"),
+                                    React.createElement('input', {
+                                        type: "text",
+                                        placeholder: "Buscar por título, autor ou editora...",
+                                        className: "w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
+                                        value: busca,
+                                        onChange: (e) => setBusca(e.target.value)
+                                    })
+                                )
+                            ),
+                            React.createElement('div', { className: "relative" },
+                                React.createElement('div', { className: "absolute left-3 top-3 text-gray-400" }, "🏷️"),
+                                React.createElement('select', {
+                                    className: "w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none bg-white",
+                                    value: filtroGenero,
+                                    onChange: (e) => setFiltroGenero(e.target.value)
+                                },
+                                    React.createElement('option', { value: "" }, "Todos os gêneros"),
+                                    ...generos.map(genero => 
+                                        React.createElement('option', { key: genero, value: genero }, genero)
+                                    )
+                                )
+                            )
+                        ),
+
+                        React.createElement('div', { className: "flex flex-col sm:flex-row justify-between items-center mt-4 gap-4" },
+                            React.createElement('div', { className: "text-sm text-gray-600" },
+                                `Mostrando ${livrosFiltrados.length} de ${livros.length} livros`
+                            ),
+                            React.createElement('button', {
+                                onClick: () => setMostrarFormulario(true),
+                                className: "flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                            },
+                                "➕ Adicionar Livro"
+                            )
+                        )
+                    ),
+
+                    // Lista de Livros
+                    React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6" },
+                        ...livrosFiltrados.map(livro => 
+                            React.createElement('div', {
+                                key: livro.id,
+                                className: "bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+                            },
+                                React.createElement('div', { className: "flex justify-between items-start mb-3" },
+                                    React.createElement('span', {
+                                        className: "bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full"
+                                    }, livro.genero),
+                                    React.createElement('button', {
+                                        onClick: () => editarLivro(livro),
+                                        className: "text-gray-400 hover:text-indigo-600 transition-colors"
+                                    }, "✏️")
+                                ),
+                                React.createElement('h3', {
+                                    className: "font-bold text-lg text-gray-800 mb-2"
+                                }, livro.titulo),
+                                React.createElement('p', { className: "text-gray-600 mb-1" },
+                                    React.createElement('span', { className: "font-medium" }, "Autor: "),
+                                    livro.autor
+                                ),
+                                React.createElement('p', { className: "text-gray-600 mb-2" },
+                                    React.createElement('span', { className: "font-medium" }, "Editora: "),
+                                    livro.editora
+                                ),
+                                livro.estante && React.createElement('div', {
+                                    className: "flex items-center gap-1 text-sm text-gray-500 mb-2"
+                                },
+                                    "📍 Estante: " + livro.estante
+                                ),
+                                livro.observacoes && React.createElement('button', {
+                                    onClick: () => setMostrarDetalhes(livro),
+                                    className: "flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
+                                }, "📄 Ver observações")
+                            )
+                        )
+                    ),
+
+                    // Modal do Formulário
+                    mostrarFormulario && React.createElement('div', {
+                        className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50",
+                        onClick: (e) => e.target === e.currentTarget && cancelarEdicao()
+                    },
+                        React.createElement('div', { className: "bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" },
+                            React.createElement('div', { className: "flex justify-between items-center mb-6" },
+                                React.createElement('h2', { className: "text-2xl font-bold text-gray-800" },
+                                    editandoLivro ? 'Editar Livro' : 'Adicionar Novo Livro'
+                                ),
+                                React.createElement('button', {
+                                    onClick: cancelarEdicao,
+                                    className: "text-gray-400 hover:text-gray-600 text-2xl"
+                                }, "✖️")
+                            ),
+
+                            React.createElement('div', { className: "space-y-4" },
+                                React.createElement('div', {},
+                                    React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Título *"),
+                                    React.createElement('input', {
+                                        type: "text",
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
+                                        value: novoLivro.titulo,
+                                        onChange: (e) => setNovoLivro({...novoLivro, titulo: e.target.value}),
+                                        placeholder: "Digite o título do livro"
+                                    })
+                                ),
+                                React.createElement('div', {},
+                                    React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Autor *"),
+                                    React.createElement('input', {
+                                        type: "text",
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
+                                        value: novoLivro.autor,
+                                        onChange: (e) => setNovoLivro({...novoLivro, autor: e.target.value}),
+                                        placeholder: "Digite o nome do autor"
+                                    })
+                                ),
+                                React.createElement('div', {},
+                                    React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Editora"),
+                                    React.createElement('input', {
+                                        type: "text",
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
+                                        value: novoLivro.editora,
+                                        onChange: (e) => setNovoLivro({...novoLivro, editora: e.target.value}),
+                                        placeholder: "Digite o nome da editora"
+                                    })
+                                ),
+                                React.createElement('div', {},
+                                    React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Gênero"),
+                                    React.createElement('select', {
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
+                                        value: novoLivro.genero,
+                                        onChange: (e) => setNovoLivro({...novoLivro, genero: e.target.value})
+                                    },
+                                        React.createElement('option', { value: "" }, "Selecione um gênero"),
+                                        ...generos.map(genero => 
+                                            React.createElement('option', { key: genero, value: genero }, genero)
+                                        )
+                                    )
+                                ),
+                                React.createElement('div', {},
+                                    React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Estante"),
+                                    React.createElement('input', {
+                                        type: "text",
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
+                                        value: novoLivro.estante,
+                                        onChange: (e) => setNovoLivro({...novoLivro, estante: e.target.value}),
+                                        placeholder: "Ex: Estante A - Prateleira 2"
+                                    })
+                                ),
+                                React.createElement('div', {},
+                                    React.createElement('label', { className: "block text-sm font-medium text-gray-700 mb-1" }, "Observações / Resenha / Fichamento"),
+                                    React.createElement('textarea', {
+                                        rows: 6,
+                                        className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent",
+                                        value: novoLivro.observacoes,
+                                        onChange: (e) => setNovoLivro({...novoLivro, observacoes: e.target.value}),
+                                        placeholder: "Digite suas observações, resenha ou fichamento do livro..."
+                                    })
+                                )
+                            ),
+
+                            React.createElement('div', { className: "flex flex-col sm:flex-row gap-3 mt-6" },
+                                React.createElement('button', {
+                                    onClick: editandoLivro ? salvarEdicao : adicionarLivro,
+                                    className: "flex-1 bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors font-medium",
+                                    disabled: !novoLivro.titulo || !novoLivro.autor
+                                }, editandoLivro ? 'Salvar Alterações' : 'Adicionar Livro'),
+                                React.createElement('button', {
+                                    onClick: cancelarEdicao,
+                                    className: "flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors font-medium"
+                                }, "← Voltar")
+                            )
+                        )
+                    ),
+
+                    // Modal de Detalhes
+                    mostrarDetalhes && React.createElement('div', {
+                        className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50",
+                        onClick: (e) => e.target === e.currentTarget && setMostrarDetalhes(null)
+                    },
+                        React.createElement('div', { className: "bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" },
+                            React.createElement('div', { className: "flex justify-between items-center mb-6" },
+                                React.createElement('h2', { className: "text-2xl font-bold text-gray-800" }, mostrarDetalhes.titulo),
+                                React.createElement('button', {
+                                    onClick: () => setMostrarDetalhes(null),
+                                    className: "text-gray-400 hover:text-gray-600 text-2xl"
+                                }, "✖️")
+                            ),
+
+                            React.createElement('div', { className: "space-y-4 mb-6" },
+                                React.createElement('p', {}, React.createElement('span', { className: "font-medium" }, "Autor: "), mostrarDetalhes.autor),
+                                React.createElement('p', {}, React.createElement('span', { className: "font-medium" }, "Editora: "), mostrarDetalhes.editora),
+                                React.createElement('p', {}, React.createElement('span', { className: "font-medium" }, "Gênero: "), mostrarDetalhes.genero),
+                                mostrarDetalhes.estante && React.createElement('p', {}, React.createElement('span', { className: "font-medium" }, "Estante: "), mostrarDetalhes.estante)
+                            ),
+
+                            mostrarDetalhes.observacoes && React.createElement('div', { className: "mb-6" },
+                                React.createElement('h3', { className: "font-medium text-gray-700 mb-2" }, "Observações / Resenha / Fichamento:"),
+                                React.createElement('div', { className: "bg-gray-50 p-4 rounded-lg" },
+                                    React.createElement('p', { className: "text-gray-700 whitespace-pre-wrap" }, mostrarDetalhes.observacoes)
+                                )
+                            ),
+
+                            React.createElement('div', { className: "flex justify-center" },
+                                React.createElement('button', {
+                                    onClick: () => setMostrarDetalhes(null),
+                                    className: "bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                                }, "← Voltar à Biblioteca")
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        ReactDOM.render(React.createElement(BibliotecaApp), document.getElementById('root'));
+    </script>
+</body>
+</html>
