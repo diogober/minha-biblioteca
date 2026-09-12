@@ -19,77 +19,91 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
 
+        // Versão do acervo inicial: incremente ao acrescentar livros aqui para que
+        // eles também apareçam em bibliotecas já salvas no navegador.
+        const VERSAO_ACERVO = '2';
+
+        // Dados da biblioteca
+        const LIVROS_INICIAIS = [
+            // FILOSOFIA E PENSAMENTO
+            { id: 47, titulo: "O mínimo que você precisa saber para não ser um idiota", autor: "Olavo de Carvalho", editora: "Record", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+            { id: 48, titulo: "Breves lições", autor: "Ayn Rand", editora: "LVM Editora", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+            { id: 50, titulo: "Demian", autor: "Herman Hesse", editora: "Record", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+            { id: 51, titulo: "Um café com Sêneca", autor: "David Fideler", editora: "Sextante", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+            { id: 56, titulo: "Meditações", autor: "Marco Aurelio", editora: "Edipro", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+            { id: 57, titulo: "A República", autor: "Platão", editora: "Edipro", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+            { id: 58, titulo: "O mundo de Sofia", autor: "Jostein Gaarder", editora: "Editora Seguinte", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+            { id: 59, titulo: "O estrangeiro", autor: "Albert Camus", editora: "Record", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+            { id: 60, titulo: "A peste", autor: "Albert Camus", editora: "Record", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+            { id: 211, titulo: "O príncipe", autor: "Nicolau Maquiavel", editora: "Penguin", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+            { id: 213, titulo: "Utopia", autor: "Thomas More", editora: "Penguin", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
+
+            // HISTÓRIA E CIÊNCIAS SOCIAIS
+            { id: 69, titulo: "A Primeira Guerra Mundial", autor: "Martin Gilbert", editora: "Leya", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
+            { id: 70, titulo: "A Segunda Guerra Mundial", autor: "Martin Gilbert", editora: "Leya", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
+            { id: 87, titulo: "O diário de Anne Frank", autor: "Anne Frank", editora: "Record", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
+            { id: 111, titulo: "1808", autor: "Laurentino Gomes", editora: "Editora Planeta", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
+            { id: 112, titulo: "1822", autor: "Laurentino Gomes", editora: "Globolivros", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
+            { id: 113, titulo: "1889", autor: "Laurentino Gomes", editora: "Globolivros", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
+
+            // CIÊNCIAS E TECNOLOGIA
+            { id: 95, titulo: "Inteligência Artificial", autor: "Kai-Fu Lee", editora: "Globolivros", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
+            { id: 118, titulo: "Cosmos", autor: "Carl Sagan", editora: "Francisco Alves Villa Rica", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
+            { id: 124, titulo: "Uma breve história do tempo", autor: "Stephen Hawking", editora: "Intrínseca", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
+            { id: 156, titulo: "Sapiens", autor: "Yuval Harari", editora: "L&PM", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
+            { id: 170, titulo: "21 lições para o Século 21", autor: "Yuval Harari", editora: "Companhia das Letras", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
+            { id: 177, titulo: "A origem das espécies", autor: "Charles Darwin", editora: "Edipro", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
+
+            // LITERATURA CLÁSSICA E MUNDIAL
+            { id: 214, titulo: "1984", autor: "George Orwell", editora: "Penguin", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+            { id: 224, titulo: "A revolução dos bichos", autor: "George Orwell", editora: "Companhia das Letras", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+            { id: 383, titulo: "Crime e Castigo", autor: "Fiódor Dostoiévski", editora: "Todavia", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+            { id: 384, titulo: "Os Irmãos Karamázov", autor: "Fiódor Dostoiévski", editora: "Editora 34", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+            { id: 424, titulo: "Guerra e Paz", autor: "Lev Tolstói", editora: "Companhia das Letras", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+            { id: 426, titulo: "Anna Karenina", autor: "Lev Tolstói", editora: "Companhia das Letras", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+            { id: 210, titulo: "Hamlet", autor: "William Shakespeare", editora: "Penguin", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+            { id: 245, titulo: "O processo", autor: "Franz Kafka", editora: "Companhia das Letras", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
+
+            // LITERATURA BRASILEIRA E LUSÓFONA
+            { id: 260, titulo: "Dom Casmurro", autor: "Machado de Assis", editora: "Penguin", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
+            { id: 262, titulo: "Memórias Póstumas de Brás Cubas", autor: "Machado de Assis", editora: "Penguin", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
+            { id: 318, titulo: "Grande Sertão Veredas", autor: "João Guimarães Rosa", editora: "Companhia das Letras", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
+            { id: 321, titulo: "Gabriela cravo e canela", autor: "Jorge Amado", editora: "Companhia das Letras", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
+            { id: 331, titulo: "Ensaio sobre a cegueira", autor: "José Saramago", editora: "Companhia das Letras", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
+            { id: 350, titulo: "Torto arado", autor: "Itamar Vieira Junior", editora: "Intrínseca", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
+
+            // FICÇÃO CONTEMPORÂNEA E GÊNEROS
+            { id: 30, titulo: "O código Da Vinci", autor: "Dan Brown", editora: "Sextante", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
+            { id: 42, titulo: "Harry Potter e a pedra filosofal", autor: "J. K. Rowling", editora: "Rocco", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
+            { id: 355, titulo: "A dança da morte", autor: "Stephen King", editora: "Suma", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
+            { id: 311, titulo: "E não sobrou nenhum", autor: "Agatha Christie", editora: "Globolivros", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
+            { id: 134, titulo: "Fundação", autor: "Isaac Asimov", editora: "Aleph", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
+            { id: 137, titulo: "Admirável mundo novo", autor: "Aldous Huxley", editora: "Biblioteca Azul", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
+
+            // DESENVOLVIMENTO PESSOAL E DIVERSOS
+            { id: 1, titulo: "Enciclopédia de fisiculturismo e musculação", autor: "Arnold Schwarzenegger", editora: "Artmed", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
+            { id: 444, titulo: "O investidor inteligente", autor: "Benjamin Graham", editora: "Harper Collins", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
+            { id: 450, titulo: "A sútil arte de ligar o foda-se", autor: "Mark Manson", editora: "Intrínseca", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
+            { id: 469, titulo: "Hábitos atômicos", autor: "James Clear", editora: "Alta Life", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
+            { id: 484, titulo: "Leonardo da Vinci", autor: "Walter Isaacson", editora: "Intrínseca", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
+            { id: 487, titulo: "Einstein", autor: "Walter Isaacson", editora: "Companhia das Letras", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" }
+        ];
+
         const BibliotecaApp = () => {
-            // Dados da biblioteca com todos os 507 livros
             const [livros, setLivros] = useState(() => {
                 const livrosSalvos = localStorage.getItem('biblioteca-livros');
-                if (livrosSalvos) {
-                    return JSON.parse(livrosSalvos);
+                if (!livrosSalvos) {
+                    return LIVROS_INICIAIS;
                 }
-                
-                return [
-                    // FILOSOFIA E PENSAMENTO
-                    { id: 47, titulo: "O mínimo que você precisa saber para não ser um idiota", autor: "Olavo de Carvalho", editora: "Record", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
-                    { id: 48, titulo: "Breves lições", autor: "Ayn Rand", editora: "LVM Editora", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
-                    { id: 50, titulo: "Demian", autor: "Herman Hesse", editora: "Record", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
-                    { id: 51, titulo: "Um café com Sêneca", autor: "David Fideler", editora: "Sextante", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
-                    { id: 56, titulo: "Meditações", autor: "Marco Aurelio", editora: "Edipro", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
-                    { id: 57, titulo: "A República", autor: "Platão", editora: "Edipro", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
-                    { id: 58, titulo: "O mundo de Sofia", autor: "Jostein Gaarder", editora: "Editora Seguinte", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
-                    { id: 59, titulo: "O estrangeiro", autor: "Albert Camus", editora: "Record", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
-                    { id: 60, titulo: "A peste", autor: "Albert Camus", editora: "Record", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
-                    { id: 211, titulo: "O príncipe", autor: "Nicolau Maquiavel", editora: "Penguin", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
-                    { id: 213, titulo: "Utopia", autor: "Thomas More", editora: "Penguin", genero: "Filosofia e Pensamento", estante: "", observacoes: "" },
 
-                    // HISTÓRIA E CIÊNCIAS SOCIAIS
-                    { id: 69, titulo: "A Primeira Guerra Mundial", autor: "Martin Gilbert", editora: "Leya", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
-                    { id: 70, titulo: "A Segunda Guerra Mundial", autor: "Martin Gilbert", editora: "Leya", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
-                    { id: 87, titulo: "O diário de Anne Frank", autor: "Anne Frank", editora: "Record", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
-                    { id: 111, titulo: "1808", autor: "Laurentino Gomes", editora: "Editora Planeta", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
-                    { id: 112, titulo: "1822", autor: "Laurentino Gomes", editora: "Globolivros", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
-                    { id: 113, titulo: "1889", autor: "Laurentino Gomes", editora: "Globolivros", genero: "História e Ciências Sociais", estante: "", observacoes: "" },
+                const salvos = JSON.parse(livrosSalvos);
+                if (localStorage.getItem('biblioteca-versao-acervo') === VERSAO_ACERVO) {
+                    return salvos;
+                }
 
-                    // CIÊNCIAS E TECNOLOGIA
-                    { id: 95, titulo: "Inteligência Artificial", autor: "Kai-Fu Lee", editora: "Globolivros", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
-                    { id: 118, titulo: "Cosmos", autor: "Carl Sagan", editora: "Francisco Alves Villa Rica", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
-                    { id: 124, titulo: "Uma breve história do tempo", autor: "Stephen Hawking", editora: "Intrínseca", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
-                    { id: 156, titulo: "Sapiens", autor: "Yuval Harari", editora: "L&PM", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
-                    { id: 170, titulo: "21 lições para o Século 21", autor: "Yuval Harari", editora: "Companhia das Letras", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
-                    { id: 177, titulo: "A origem das espécies", autor: "Charles Darwin", editora: "Edipro", genero: "Ciências e Tecnologia", estante: "", observacoes: "" },
-
-                    // LITERATURA CLÁSSICA E MUNDIAL
-                    { id: 214, titulo: "1984", autor: "George Orwell", editora: "Penguin", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
-                    { id: 224, titulo: "A revolução dos bichos", autor: "George Orwell", editora: "Companhia das Letras", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
-                    { id: 383, titulo: "Crime e Castigo", autor: "Fiódor Dostoiévski", editora: "Todavia", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
-                    { id: 424, titulo: "Guerra e Paz", autor: "Lev Tolstói", editora: "Companhia das Letras", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
-                    { id: 426, titulo: "Anna Karenina", autor: "Lev Tolstói", editora: "Companhia das Letras", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
-                    { id: 210, titulo: "Hamlet", autor: "William Shakespeare", editora: "Penguin", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
-                    { id: 245, titulo: "O processo", autor: "Franz Kafka", editora: "Companhia das Letras", genero: "Literatura Clássica e Mundial", estante: "", observacoes: "" },
-
-                    // LITERATURA BRASILEIRA E LUSÓFONA
-                    { id: 260, titulo: "Dom Casmurro", autor: "Machado de Assis", editora: "Penguin", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
-                    { id: 262, titulo: "Memórias Póstumas de Brás Cubas", autor: "Machado de Assis", editora: "Penguin", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
-                    { id: 318, titulo: "Grande Sertão Veredas", autor: "João Guimarães Rosa", editora: "Companhia das Letras", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
-                    { id: 321, titulo: "Gabriela cravo e canela", autor: "Jorge Amado", editora: "Companhia das Letras", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
-                    { id: 331, titulo: "Ensaio sobre a cegueira", autor: "José Saramago", editora: "Companhia das Letras", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
-                    { id: 350, titulo: "Torto arado", autor: "Itamar Vieira Junior", editora: "Intrínseca", genero: "Literatura Brasileira e Lusófona", estante: "", observacoes: "" },
-
-                    // FICÇÃO CONTEMPORÂNEA E GÊNEROS
-                    { id: 30, titulo: "O código Da Vinci", autor: "Dan Brown", editora: "Sextante", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
-                    { id: 42, titulo: "Harry Potter e a pedra filosofal", autor: "J. K. Rowling", editora: "Rocco", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
-                    { id: 355, titulo: "A dança da morte", autor: "Stephen King", editora: "Suma", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
-                    { id: 311, titulo: "E não sobrou nenhum", autor: "Agatha Christie", editora: "Globolivros", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
-                    { id: 134, titulo: "Fundação", autor: "Isaac Asimov", editora: "Aleph", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
-                    { id: 137, titulo: "Admirável mundo novo", autor: "Aldous Huxley", editora: "Biblioteca Azul", genero: "Ficção Contemporânea e Gêneros", estante: "", observacoes: "" },
-
-                    // DESENVOLVIMENTO PESSOAL E DIVERSOS
-                    { id: 1, titulo: "Enciclopédia de fisiculturismo e musculação", autor: "Arnold Schwarzenegger", editora: "Artmed", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
-                    { id: 444, titulo: "O investidor inteligente", autor: "Benjamin Graham", editora: "Harper Collins", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
-                    { id: 450, titulo: "A sútil arte de ligar o foda-se", autor: "Mark Manson", editora: "Intrínseca", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
-                    { id: 469, titulo: "Hábitos atômicos", autor: "James Clear", editora: "Alta Life", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
-                    { id: 484, titulo: "Leonardo da Vinci", autor: "Walter Isaacson", editora: "Intrínseca", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" },
-                    { id: 487, titulo: "Einstein", autor: "Walter Isaacson", editora: "Companhia das Letras", genero: "Desenvolvimento Pessoal e Diversos", estante: "", observacoes: "" }
-                ];
+                // Acrescenta só os livros novos do acervo, preservando os já salvos
+                const idsSalvos = new Set(salvos.map(livro => livro.id));
+                return [...salvos, ...LIVROS_INICIAIS.filter(livro => !idsSalvos.has(livro.id))];
             });
 
             const generos = [
@@ -120,6 +134,7 @@
             // Salvar no localStorage
             useEffect(() => {
                 localStorage.setItem('biblioteca-livros', JSON.stringify(livros));
+                localStorage.setItem('biblioteca-versao-acervo', VERSAO_ACERVO);
             }, [livros]);
 
             // Busca e filtros
