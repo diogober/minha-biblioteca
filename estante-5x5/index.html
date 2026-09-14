@@ -1346,7 +1346,7 @@ button.link:hover{color:var(--acento)}
      mesmo, varrendo linhas do quadro da câmera. Quem identifica o livro
      pelo ISBN e escolhe o nicho é o Claude, pela capacidade "sample". */
 
-  var sample = null, podeImagem = false;
+  var sample = null, podeImagem = null;   /* null: ainda não sei se dá para mandar foto */
 
   var EAN = (function(){
     /* larguras das quatro barras de cada algarismo, em módulos.
@@ -1665,33 +1665,82 @@ button.link:hover{color:var(--acento)}
   }
 
   /* ---- a conversa com o Claude ---- */
-  function identificar(isbn, foto, sinal){
-    var pedido =
-      "Ajude a catalogar um livro que acabou de chegar numa estante doméstica, " +
-      "no Brasil. O código de barras da contracapa foi lido e deu este ISBN-13: " +
-      isbn + (EAN.pais(isbn) ? " (" + EAN.pais(isbn) + ")" : "") + ".\n\n" +
-      (foto ? "Vai junto a foto tirada do livro na hora da leitura — use o que " +
-        "estiver legível nela (título, autor, editora, capa) para confirmar ou " +
-        "corrigir a identificação; o que a foto mostra vale mais do que a sua " +
-        "memória do número.\n\n" : "") +
-      "A estante tem nichos com endereço (coluna e prateleira). Estes são os " +
-      "nichos e o que já está guardado em cada um:\n" + retratoDaEstante() + "\n\n" +
-      "Escolha para este livro o nicho que melhor combina com o que já está lá " +
-      "dentro — assunto, autor, coleção, editora. Se o autor ou a série já " +
-      "tiver casa na estante, essa é a casa.\n\n" +
-      "Responda só com um objeto JSON assim:\n" +
+  function fichaPedida(){
+    return "Responda só com um objeto JSON assim:\n" +
       '{"titulo":"","autor":"","editora":"","ano":"","idioma":"","confianca":"alta|media|baixa",' +
       '"nicho":"C2P2","porque":"","sinopse":"","gostar":"","aviso":null}\n' +
       "Regras: \"nicho\" tem de ser um dos endereços da lista. \"porque\" é uma " +
       "frase curta dizendo por que esse nicho. \"sinopse\" tem de 2 a 4 frases " +
       "sobre o livro; \"gostar\" tem 1 ou 2 frases sobre por que vale a leitura. " +
-      "\"confianca\" diz o quanto você reconhece este ISBN/livro. Se não " +
-      "reconhecer o livro com segurança, deixe titulo e autor em branco, ponha " +
-      "confianca \"baixa\" e explique em \"aviso\" — não invente título, autor, " +
-      "editora nem ano. Escreva em português do Brasil.";
+      "Escreva em português do Brasil.";
+  }
+  function nichosPedidos(){
+    return "A estante tem nichos com endereço (coluna e prateleira). Estes são " +
+      "os nichos e o que já está guardado em cada um:\n" + retratoDaEstante() + "\n\n" +
+      "Escolha para este livro o nicho que melhor combina com o que já está lá " +
+      "dentro — assunto, autor, coleção, editora. Se o autor ou a série já " +
+      "tiver casa na estante, essa é a casa.\n\n";
+  }
+
+  /* Pelo número. O ISBN sozinho é pista fraca: a numeração não guarda o
+     título, e de cor ninguém sabe tabela de ISBN. Por isso a foto vai
+     junto quando pode ir — e o texto só promete foto quando ela vai
+     mesmo, senão a resposta vem reclamando de uma foto que não chegou. */
+  function textoPorIsbn(isbn, comFoto){
+    return "Ajude a catalogar um livro que acabou de chegar numa estante " +
+      "doméstica, no Brasil. O código de barras da contracapa foi lido e deu " +
+      "este ISBN-13: " + isbn + (EAN.pais(isbn) ? " (" + EAN.pais(isbn) + ")" : "") + ".\n\n" +
+      (comFoto
+        ? "Vai junto a foto tirada do livro na hora da leitura — use o que " +
+          "estiver legível nela (título, autor, editora, capa) para confirmar ou " +
+          "corrigir a identificação; o que a foto mostra vale mais do que a sua " +
+          "memória do número.\n\n"
+        : "Você não recebeu foto nenhuma: tem só o número. Não diga que a foto " +
+          "não veio — trabalhe com o que tem.\n\n") +
+      nichosPedidos() + fichaPedida() + "\n" +
+      "Sobre a identificação: \"confianca\" diz o quanto você reconhece este " +
+      "livro. Se não reconhecer com segurança, deixe titulo e autor em branco e " +
+      "ponha confianca \"baixa\" — não invente título, autor nem ano. Mesmo " +
+      "assim, se o prefixo de editora do ISBN for de uma editora que você " +
+      "conhece, preencha \"editora\" e diga isso em \"aviso\", numa frase. " +
+      "O \"aviso\" é lido por quem está com o livro na mão: peça o título, " +
+      "não mande consultar site nenhum.";
+  }
+  function identificar(isbn, foto, sinal){
+    var manda = !!(foto && podeImagem !== false);
     var opcoes = { modelTier: "default" };
     if (sinal) opcoes.signal = sinal;
-    if (foto && podeImagem) opcoes.images = [foto];
+    if (manda) opcoes.images = [foto];
+    return sample.json(textoPorIsbn(isbn, manda), opcoes).catch(function(e){
+      /* esta visualização não manda imagem: refaz a pergunta sem prometer foto */
+      if (manda && e && (e.code === "images_unavailable" || e.code === "image_rejected")){
+        podeImagem = false;
+        var segunda = { modelTier: "default" };
+        if (sinal) segunda.signal = sinal;
+        return sample.json(textoPorIsbn(isbn, false), segunda);
+      }
+      throw e;
+    });
+  }
+
+  /* Pelo título, que é o que funciona quando o número não diz nada: quem
+     está com o livro na mão lê a capa, e o resto o Claude completa. */
+  function identificarPeloTitulo(isbn, titulo, autor, sinal){
+    var pedido =
+      "Ajude a catalogar um livro numa estante doméstica, no Brasil. Quem está " +
+      "com o livro na mão diz que o título é: \"" + titulo + "\"" +
+      (autor ? ", de " + autor : "") + "." +
+      (isbn ? " O ISBN-13 impresso na contracapa é " + isbn + "." : "") + "\n\n" +
+      "Complete a ficha desse livro: autor (se não veio), editora, ano, sinopse " +
+      "e por que vale a leitura.\n\n" +
+      nichosPedidos() + fichaPedida() + "\n" +
+      "Mantenha em \"titulo\" o título como foi dito. Se houver mais de uma " +
+      "edição ou se o título couber em mais de um livro, escolha o mais " +
+      "conhecido e diga a dúvida em \"aviso\". Se não conhecer o livro, deixe " +
+      "sinopse em branco, ponha confianca \"baixa\" e escolha o nicho pelo " +
+      "assunto que o título sugerir.";
+    var opcoes = { modelTier: "default" };
+    if (sinal) opcoes.signal = sinal;
     return sample.json(pedido, opcoes);
   }
 
@@ -1959,7 +2008,7 @@ button.link:hover{color:var(--acento)}
         URL.revokeObjectURL(url);
         if (codigo && EAN.ehIsbn(codigo)){ achou(codigo, arquivo); return; }
         /* as barras não saíram; os olhos do Claude ainda leem os números */
-        if (sample && podeImagem){ pelosOlhos(arquivo); return; }
+        if (sample && podeImagem !== false){ pelosOlhos(arquivo); return; }
         corpo.innerHTML = '<div class="c-fora"><h3>Não consegui ler o código nessa foto.</h3>' +
           '<p class="vazio-txt">Tente de novo mais perto e com o código bem iluminado, ' +
           'ou digite o número impresso embaixo das barras.</p>' +
@@ -2153,6 +2202,13 @@ button.link:hover{color:var(--acento)}
           (confianca && confianca !== "alta"
             ? '<p class="c-duvida">Confiança ' + esc(confianca) + ' — confira antes de guardar.</p>' : '') +
           (r.aviso ? '<p class="c-duvida">' + esc(r.aviso) + '</p>' : '') +
+          (!titulo ? '<p class="vazio-txt">O número do código de barras não guarda o ' +
+            'título — quem tem isso são os catálogos, e esta página não alcança a ' +
+            'internet. ' + (podeImagem === false
+              ? 'Nesta visualização eu também não consigo enxergar fotos. '
+              : '') +
+            'Escreva o título como está na capa e eu completo o resto: autor, ' +
+            'editora, sinopse e o nicho.</p>' : '') +
           (iguais.length
             ? '<div class="aviso">Já há na estante: ' + iguais.map(function(l){
                 return esc(l.t) + " (nº " + l.num + ", " + nichoDe(l) + ")"; }).join("; ") +
@@ -2168,10 +2224,11 @@ button.link:hover{color:var(--acento)}
             '<select id="c-nicho">' + ops + '</select>' +
           '</div>' +
           '<div class="acoes">' +
-            '<button class="bt forte" id="c-guardar">Guardar na estante</button>' +
+            (titulo ? '' : '<button class="bt forte" id="c-pelotitulo">Identificar pelo título</button>') +
+            '<button class="bt' + (titulo ? ' forte' : '') + '" id="c-guardar">Guardar na estante</button>' +
             '<button class="bt" id="c-ajustar">Ajustar a ficha</button>' +
             '<button class="bt" id="c-outro">Ler outro código</button>' +
-            (podeImagem && sample ? '<label class="bt" for="c-capa">Fotografar a capa</label>' +
+            (sample && podeImagem !== false ? '<label class="bt" for="c-capa">Fotografar a capa</label>' +
               '<input type="file" id="c-capa" accept="image/*" capture="environment" hidden>' : '') +
           '</div>' +
         '</div>';
@@ -2184,6 +2241,30 @@ button.link:hover{color:var(--acento)}
           sinopse: t.trim() === titulo ? r.sinopse : "",
           gostar: t.trim() === titulo ? r.gostar : "" };
       };
+      var pedirPeloTitulo = corpo.querySelector("#c-pelotitulo");
+      if (pedirPeloTitulo) pedirPeloTitulo.addEventListener("click", function(){
+        var campo = corpo.querySelector("#c-titulo");
+        var t = (campo.value || "").trim();
+        var a = (corpo.querySelector("#c-autor").value || "").trim();
+        if (!t){ campo.focus(); campo.placeholder = "Escreva o título aqui"; return; }
+        corpo.className = "leitor-corpo";
+        corpo.innerHTML = '<div class="c-fora"><p class="c-isbn mono">' + esc(EAN.bonito(isbn)) + '</p>' +
+          '<h3>Procurando \u201c' + esc(t) + '\u201d…</h3>' +
+          '<p class="vazio-txt">Um instante.</p></div>';
+        var estaVez = minhaVez();
+        identificarPeloTitulo(isbn, t, a).then(function(r2){
+          if (!aindaEmCartaz(estaVez)) return;
+          r2 = r2 || {};
+          if (!(r2.titulo || "").trim()) r2.titulo = t;
+          if (!(r2.autor || "").trim() && a) r2.autor = a;
+          mostrarAchado(isbn, foto, r2);
+        }).catch(function(e){
+          if (!aindaEmCartaz(estaVez)) return;
+          /* não perde o que a pessoa já escreveu */
+          r.titulo = t; r.autor = a; r.aviso = recadoDeErro(e);
+          mostrarAchado(isbn, foto, r);
+        });
+      });
       corpo.querySelector("#c-guardar").addEventListener("click", function(){
         var d = pegar();
         if (!d.titulo){

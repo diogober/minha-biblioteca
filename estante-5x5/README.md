@@ -11,6 +11,9 @@ Fonte do artefato publicado em
   leitor-ean.teste.js`): códigos sintéticos com borrão, ruído, luz
   torta, livro de cabeça para baixo, celular deitado, e a garantia de
   que ruído puro nunca vira um código.
+- `sem-foto.teste.js` — o caso do ISBN desconhecido numa visualização
+  que não manda imagem: o pedido não pode prometer foto que não vai, e a
+  ficha tem de oferecer o caminho do título.
 - `camera-negada.teste.js` — testes do recado que aparece quando a câmera
   não abre: quadro sem permissão de câmera, usuário que negou, aparelho
   sem câmera.
@@ -41,8 +44,12 @@ Cadastro de livro novo pelo código de barras da contracapa:
    ou o navegador ter bloqueado o site — e só ensina a liberar quando
    liberar adianta.
 3. Com o ISBN em mãos, o Claude identifica o volume — a foto do momento
-   vai junto — e escolhe o nicho olhando o que já está guardado em cada
-   um. Volta título, autor, editora, ano, sinopse e o porquê do nicho.
+   vai junto, quando a visualização deixa mandar imagem — e escolhe o
+   nicho olhando o que já está guardado em cada um. Volta título, autor,
+   editora, ano, sinopse e o porquê do nicho. O número sozinho é pista
+   fraca (a numeração do ISBN não guarda o título, e a página não
+   alcança catálogo nenhum): quando não dá para reconhecer, a ficha pede
+   o título e o Claude completa o resto a partir dele.
 4. A ficha aparece para conferência (com aviso se o livro já estiver na
    estante) e um toque guarda. Marcando "guardar sozinho", volume
    reconhecido com confiança alta e sem repetição entra direto, com
