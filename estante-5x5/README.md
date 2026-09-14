@@ -15,6 +15,8 @@ Fonte do artefato publicado em
   enfileira, e a estante dentro do quadro recolhe a fila e cadastra
   (usa `quadro.teste.html`, que põe a estante dentro de um quadro como o
   aplicativo faz). Precisa da página servida por http.
+- `capa.teste.js` — identificação pela foto da capa: onde a imagem
+  passa, e onde não passa (aí tem de explicar e oferecer o título).
 - `sem-foto.teste.js` — o caso do ISBN desconhecido numa visualização
   que não manda imagem: o pedido não pode prometer foto que não vai, e a
   ficha tem de oferecer o caminho do título.
@@ -59,14 +61,21 @@ Cadastro de livro novo pelo código de barras da contracapa:
    política de permissões do documento, e aí não há ajuste que resolva)
    ou o navegador ter bloqueado o site — e só ensina a liberar quando
    liberar adianta.
-4. Com o ISBN em mãos, o Claude identifica o volume — a foto do momento
+4. **Pela capa**, que é o caminho mais certeiro quando a visualização
+   deixa a página mandar imagem ao Claude: a capa traz título e autor
+   escritos, e ler o que está escrito é mais seguro do que reconhecer um
+   número de cor. O botão "Fotografar a capa" aparece na barra da
+   câmera, na tela de câmera indisponível e na ficha de um volume não
+   reconhecido. Onde a imagem não passa, a recusa é explicada e o
+   caminho do título fica ali mesmo.
+5. Com o ISBN em mãos, o Claude identifica o volume — a foto do momento
    vai junto, quando a visualização deixa mandar imagem — e escolhe o
    nicho olhando o que já está guardado em cada um. Volta título, autor,
    editora, ano, sinopse e o porquê do nicho. O número sozinho é pista
    fraca (a numeração do ISBN não guarda o título, e a página não
    alcança catálogo nenhum): quando não dá para reconhecer, a ficha pede
    o título e o Claude completa o resto a partir dele.
-5. A ficha aparece para conferência (com aviso se o livro já estiver na
+6. A ficha aparece para conferência (com aviso se o livro já estiver na
    estante) e um toque guarda. Marcando "guardar sozinho", volume
    reconhecido com confiança alta e sem repetição entra direto, com
    "desfazer" à mão, e a câmera volta para o próximo.

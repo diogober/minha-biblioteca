@@ -1766,6 +1766,28 @@ button.link:hover{color:var(--acento)}
     });
   }
 
+  /* Pela capa. É o caminho mais certeiro dos três: a capa traz o título e
+     o autor escritos, e ler o que está escrito é mais seguro do que
+     reconhecer um número de cor. Só depende de a visualização deixar a
+     página mandar imagem ao Claude. */
+  function identificarPelaCapa(foto, isbn, sinal){
+    var pedido =
+      "A foto é a capa de um livro (ou a folha de rosto, ou a contracapa), " +
+      "fotografada agora por quem está catalogando uma estante doméstica no " +
+      "Brasil. Leia o que está escrito nela — título, autor, editora, coleção — " +
+      "e identifique o livro a partir disso. O que está impresso na foto manda; " +
+      "sua memória serve para completar o resto.\n\n" +
+      (isbn ? "O código de barras deste mesmo volume deu o ISBN-13 " + isbn + ".\n\n" : "") +
+      nichosPedidos() + fichaPedida() + "\n" +
+      "Se a foto estiver ilegível, ou se não for capa de livro, deixe titulo e " +
+      "autor em branco, ponha confianca \"baixa\" e diga em \"aviso\" o que deu " +
+      "para ver — uma frase, para quem está com o livro na mão saber se " +
+      "fotografa de novo ou escreve o título.";
+    var opcoes = { modelTier: "default", images: [foto] };
+    if (sinal) opcoes.signal = sinal;
+    return sample.json(pedido, opcoes);
+  }
+
   /* Pelo título, que é o que funciona quando o número não diz nada: quem
      está com o livro na mão lê a capa, e o resto o Claude completa. */
   function identificarPeloTitulo(isbn, titulo, autor, sinal){
@@ -1880,6 +1902,8 @@ button.link:hover{color:var(--acento)}
           '<span class="c-passo" id="c-recado">Ligando a câmera…</span>' +
           '<label class="bt pequeno" for="c-foto">Tirar foto do código</label>' +
           '<input type="file" id="c-foto" accept="image/*" capture="environment" hidden>' +
+          (sample ? '<label class="bt pequeno" for="c-capa0">Fotografar a capa</label>' +
+            '<input type="file" id="c-capa0" accept="image/*" capture="environment" hidden>' : '') +
           (soLeitura() && fila.length
             ? '<button class="bt pequeno" id="c-verfila">Ver os ' + fila.length + ' lidos</button>'
             : '') +
@@ -1887,6 +1911,11 @@ button.link:hover{color:var(--acento)}
       corpo.querySelector("#c-foto").addEventListener("change", function(ev){
         var f = ev.target.files[0]; ev.target.value = "";
         if (f) lerDaFoto(f);
+      });
+      var capa0 = corpo.querySelector("#c-capa0");
+      if (capa0) capa0.addEventListener("change", function(ev){
+        var f = ev.target.files[0]; ev.target.value = "";
+        if (f) pelaCapa(f, "");
       });
       var verfila = corpo.querySelector("#c-verfila");
       if (verfila) verfila.addEventListener("click", function(){ telaLidos(true); });
@@ -1990,8 +2019,9 @@ button.link:hover{color:var(--acento)}
         texto = "Feche quem estiver usando a câmera e tente de novo, ou tire a foto do código.";
       } else {
         titulo = "Não consegui abrir a câmera aqui.";
-        texto = "Tire uma foto do código de barras, que eu leio os números nela. " +
-          "Ou digite o ISBN impresso embaixo das barras.";
+        texto = "Fotografe o código de barras, que eu leio os números nele — ou " +
+          "fotografe a capa, que costuma identificar melhor, porque nela o título " +
+          "está escrito. Digitar o ISBN também serve.";
       }
 
       corpo.innerHTML =
@@ -2008,6 +2038,8 @@ button.link:hover{color:var(--acento)}
               '" target="_blank" rel="noopener">Ler com a câmera numa aba</a>' : '') +
             '<label class="bt' + (NO_QUADRO ? '' : ' forte') + '" for="c-foto2">Tirar foto do código</label>' +
             '<input type="file" id="c-foto2" accept="image/*" capture="environment" hidden>' +
+            (sample ? '<label class="bt" for="c-capa3">Fotografar a capa</label>' +
+              '<input type="file" id="c-capa3" accept="image/*" capture="environment" hidden>' : '') +
             '<button class="bt" id="c-manual2">Digitar o número</button>' +
             (tentarDeNovo ? '<button class="bt" id="c-tentar">Tentar a câmera de novo</button>' : '') +
           '</div>' +
@@ -2016,6 +2048,11 @@ button.link:hover{color:var(--acento)}
       corpo.querySelector("#c-foto2").addEventListener("change", function(ev){
         var f = ev.target.files[0]; ev.target.value = "";
         if (f) lerDaFoto(f);
+      });
+      var capa3 = corpo.querySelector("#c-capa3");
+      if (capa3) capa3.addEventListener("change", function(ev){
+        var f = ev.target.files[0]; ev.target.value = "";
+        if (f) pelaCapa(f, "");
       });
       corpo.querySelector("#c-manual2").addEventListener("click", function(){ telaDigitar(); });
       var outra = corpo.querySelector("#c-tentar");
@@ -2204,6 +2241,66 @@ button.link:hover{color:var(--acento)}
       });
     }
     function telaSemGaveta(){ telaLidos(false); }
+
+    /* ---- pela capa: o Claude lê o que está escrito ---- */
+    function pelaCapa(foto, isbn){
+      pararCamera();
+      var vez = minhaVez();
+      corpo.className = "leitor-corpo";
+      corpo.innerHTML =
+        '<div class="c-fora">' +
+          (isbn ? '<p class="c-isbn mono">' + esc(EAN.bonito(isbn)) + '</p>' : '') +
+          '<h3>Lendo a capa…</h3>' +
+          '<p class="vazio-txt">O Claude lê o título e o autor na foto e escolhe o nicho. ' +
+          'Costuma levar alguns segundos.</p>' +
+        '</div>';
+      identificarPelaCapa(foto, isbn).then(function(r){
+        if (!aindaEmCartaz(vez)) return;
+        mostrarAchado(isbn, foto, r || {});
+      }).catch(function(e){
+        if (!aindaEmCartaz(vez)) return;
+        var semImagem = e && (e.code === "images_unavailable" || e.code === "image_rejected");
+        if (e && e.code === "images_unavailable") podeImagem = false;
+        corpo.innerHTML =
+          '<div class="c-fora">' +
+            '<h3>' + esc(semImagem ? "Esta visualização não deixa a foto chegar ao Claude."
+                                   : recadoDeErro(e)) + '</h3>' +
+            '<p class="vazio-txt">' + (semImagem
+              ? "Não é a câmera: a foto sai daqui, mas esta janela não passa imagens " +
+                "adiante. Abrindo a estante no navegador (claude.ai no Safari ou no " +
+                "Chrome) a capa costuma passar. Daqui, o caminho é escrever o título."
+              : "Tente de novo, ou escreva o título — eu completo o resto.") + '</p>' +
+            '<div class="campos" style="max-width:340px">' +
+              '<input type="text" id="c-tit2" placeholder="Título">' +
+              '<input type="text" id="c-aut2" placeholder="Autor (se souber)">' +
+              '<div class="acoes" style="margin:2px 0 0">' +
+                '<button class="bt forte" id="c-portitulo2">Identificar pelo título</button>' +
+                '<button class="bt" id="c-voltacam2">Voltar à câmera</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        var mandar = function(){
+          var t = (corpo.querySelector("#c-tit2").value || "").trim();
+          if (!t){ corpo.querySelector("#c-tit2").focus(); return; }
+          var a = (corpo.querySelector("#c-aut2").value || "").trim();
+          var outra = minhaVez();
+          corpo.innerHTML = '<div class="c-fora"><h3>Procurando \u201c' + esc(t) + '\u201d…</h3>' +
+            '<p class="vazio-txt">Um instante.</p></div>';
+          identificarPeloTitulo(isbn, t, a).then(function(r2){
+            if (!aindaEmCartaz(outra)) return;
+            r2 = r2 || {};
+            if (!(r2.titulo || "").trim()) r2.titulo = t;
+            mostrarAchado(isbn, null, r2);
+          }).catch(function(e2){
+            if (!aindaEmCartaz(outra)) return;
+            mostrarAchado(isbn, null, { titulo: t, autor: a, confianca: "baixa",
+              aviso: recadoDeErro(e2) });
+          });
+        };
+        corpo.querySelector("#c-portitulo2").addEventListener("click", mandar);
+        corpo.querySelector("#c-voltacam2").addEventListener("click", function(){ telaCamera(); });
+      });
+    }
 
     /* ---- tela 3: digitar o número na mão ---- */
     function telaDigitar(){
@@ -2400,7 +2497,7 @@ button.link:hover{color:var(--acento)}
             '<button class="bt" id="c-ajustar">Ajustar a ficha</button>' +
             '<button class="bt" id="c-outro">' +
               (fila.length ? 'Próximo da fila (' + fila.length + ')' : 'Ler outro código') + '</button>' +
-            (sample && podeImagem !== false ? '<label class="bt" for="c-capa">Fotografar a capa</label>' +
+            (sample ? '<label class="bt" for="c-capa">Fotografar a capa</label>' +
               '<input type="file" id="c-capa" accept="image/*" capture="environment" hidden>' : '') +
           '</div>' +
         '</div>';
@@ -2460,15 +2557,7 @@ button.link:hover{color:var(--acento)}
       var capa = corpo.querySelector("#c-capa");
       if (capa) capa.addEventListener("change", function(ev){
         var f = ev.target.files[0]; ev.target.value = "";
-        if (!f) return;
-        corpo.innerHTML = '<div class="c-fora"><h3>Olhando a capa…</h3>' +
-          '<p class="vazio-txt">Um instante.</p></div>';
-        var outraVez = minhaVez();
-        identificar(isbn, f).then(function(r2){
-          if (aindaEmCartaz(outraVez)) mostrarAchado(isbn, f, r2 || {});
-        }).catch(function(){
-          if (aindaEmCartaz(outraVez)) mostrarAchado(isbn, foto, r);
-        });
+        if (f) pelaCapa(f, isbn);
       });
     }
 

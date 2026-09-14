@@ -62,7 +62,10 @@ const CLAUDE_SEM_IMAGEM = `
     throw new Error("não ofereceu o caminho do título");
   if (!/não consigo enxergar fotos/.test(texto))
     throw new Error("não explicou que esta visualização não manda fotos");
-  if (await pag.$("#c-capa")) throw new Error("ofereceu fotografar a capa sem poder mandar foto");
+  /* o botão da capa continua à mão de propósito: o que o navegador diz
+     sobre imagens nem sempre é verdade, e uma recusa explicada vale mais
+     do que um caminho escondido (capa.teste.js cobre a recusa) */
+  if (!(await pag.$("#c-capa"))) throw new Error("escondeu o caminho da capa");
   console.log("cartão do ISBN desconhecido: pede o título, sem prometer foto");
 
   /* escrever o título resolve */
