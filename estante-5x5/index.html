@@ -1834,10 +1834,12 @@ button.link:hover{color:var(--acento)}
     }
     function comoLiberar(){
       var onde = ondeEstamos();
-      if (onde === "ios") return "No iPhone ou iPad, pelo Safari: toque no " +
-        "\u201caA\u201d à esquerda da barra de endereço, depois em Ajustes do Site, " +
-        "e ponha a Câmera em Perguntar ou Permitir. Pelo aplicativo do Claude: " +
-        "Ajustes do aparelho \u203a Claude \u203a Câmera.";
+      if (onde === "ios") return "No iPhone ou iPad, se não há barra de endereço " +
+        "nesta tela, você está no aplicativo do Claude: abra os Ajustes do aparelho, " +
+        "role até Claude e ligue a Câmera — se não houver essa linha, o aplicativo " +
+        "não pede câmera, e então é a foto. No Safari: Ajustes do aparelho \u203a " +
+        "Safari \u203a Configurações para Sites \u203a Câmera \u203a Perguntar, ou toque no " +
+        "\u201caA\u201d na barra de endereço \u203a Ajustes do Site \u203a Câmera.";
       if (onde === "android") return "No Android, pelo Chrome: toque no cadeado à " +
         "esquerda do endereço \u203a Permissões \u203a Câmera \u203a Permitir, e recarregue a página.";
       if (onde === "mac") return "No Mac: clique no ícone à esquerda do endereço " +
