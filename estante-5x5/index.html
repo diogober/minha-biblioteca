@@ -278,6 +278,9 @@ button.link:hover{color:var(--acento)}
   background:var(--tinta); color:var(--fundo); border-radius:3px; padding:10px 14px;
   font-size:13.5px; display:flex; gap:14px; align-items:center; flex-wrap:wrap;
   max-width:calc(100% - 32px); box-shadow:var(--sombra)}
+.c-fila{list-style:none; margin:16px 0 0; padding:0; display:flex; flex-wrap:wrap; gap:8px}
+.c-fila li{border:1px solid var(--linha2); border-radius:2px; padding:5px 9px; font-size:12.5px;
+  color:var(--tinta2); background:var(--superficie)}
 .c-miudo{font-size:11.5px; color:var(--tinta3); margin:22px 0 0; word-break:break-word}
 .recado .link{color:var(--fundo); opacity:.8; font-size:13px}
 @media (max-width:560px){
@@ -1251,6 +1254,14 @@ button.link:hover{color:var(--acento)}
   });
   $("#b-novo").addEventListener("click", function(){ abrirNovo(); });
   $("#b-codigo").addEventListener("click", function(){ abrirLeituraCodigo(); });
+  /* códigos lidos na aba do navegador esperando cadastro: o botão avisa */
+  function contarFilaNoBotao(){
+    var n = filaLer().length, b = $("#b-codigo");
+    if (plataformaRespondeu && !sample && !db){ b.textContent = "Ler código de barras"; return; }
+    b.textContent = n ? "Cadastrar " + n + (n === 1 ? " código lido" : " códigos lidos")
+                      : "Ler código de barras";
+    b.setAttribute("aria-pressed", n ? "true" : "false");
+  }
 
   /* ---------------- acrescentar livro ----------------
      O mesmo formulário serve para três coisas: cadastrar na mão, editar
@@ -1347,6 +1358,9 @@ button.link:hover{color:var(--acento)}
      pelo ISBN e escolhe o nicho é o Claude, pela capacidade "sample". */
 
   var sample = null, podeImagem = null;   /* null: ainda não sei se dá para mandar foto */
+  /* enquanto as capacidades não respondem, não dá para dizer se esta
+     página é a estante (que cadastra) ou um posto de leitura (que só lê) */
+  var plataformaRespondeu = !(window.claude && window.claude.use);
 
   var EAN = (function(){
     /* larguras das quatro barras de cada algarismo, em módulos.
@@ -1612,6 +1626,35 @@ button.link:hover{color:var(--acento)}
     return { lerCinza:lerCinza, confere:confere, ehIsbn:ehIsbn, pais:pais, bonito:bonito };
   })();
 
+  /* ---- leitura em aba própria ----
+     Dentro do aplicativo, a estante roda num quadro que não entrega a
+     câmera à página — permissão do aparelho não resolve, porque quem
+     nega é o quadro. Aberta em aba própria, no navegador, a página é
+     dona da janela e o navegador pergunta pela câmera do jeito normal.
+     Os códigos lidos lá ficam numa fila no armazenamento do navegador;
+     a estante dentro do Claude é a mesma origem, então lê a fila de
+     volta e cadastra. */
+  var NO_QUADRO = (function(){
+    try { return window.self !== window.top; } catch (e) { return true; }
+  })();
+  var FILA = "estante-fila-codigos";
+  function filaLer(){
+    try {
+      var t = localStorage.getItem(FILA), v = t ? JSON.parse(t) : [];
+      /* peneira simples de propósito: esta função roda no arranque, antes
+         de o leitor de código existir; a conta de verificação vem depois */
+      return (v || []).filter(function(x){ return /^97[89]\d{10}$/.test(x); });
+    } catch (e) { return []; }
+  }
+  function filaGravar(v){
+    try { localStorage.setItem(FILA, JSON.stringify(v)); return true; }
+    catch (e) { return false; }
+  }
+  function enderecoAvulso(){
+    var u = String(location.href).split("#")[0];
+    return u + (u.indexOf("?") < 0 ? "?" : "&") + "leitura=1";
+  }
+
   /* ---- o quadro da câmera (ou a foto) virando cinza ---- */
   var lonaLeitura = null, tintaLeitura = null;
   function cinzaDe(fonte, larguraFonte, alturaFonte, alvo){
@@ -1773,6 +1816,12 @@ button.link:hover{color:var(--acento)}
 
     var video = null, fluxo = null, varrendo = false, relogio = null;
     var candidato = "", repetido = 0, guardados = 0;
+    /* Onde não há Claude para identificar nem banco para guardar — a
+       página aberta em aba própria, por exemplo — o leitor vira posto de
+       leitura: junta os códigos numa fila que a estante recolhe depois.
+       Quem decide é a capacidade que respondeu, não o formato da janela. */
+    var fila = filaLer(), bloqueado = "";
+    var soLeitura = function(){ return plataformaRespondeu && !sample && !db; };
     /* cada tela recebe um número: resposta atrasada da câmera ou do
        Claude não pode pintar por cima da tela que o leitor já trocou */
     var geracao = 0;
@@ -1780,7 +1829,12 @@ button.link:hover{color:var(--acento)}
     var aindaEmCartaz = function(g){ return g === geracao && cx.parentNode; };
     var corpo = cx.querySelector("#c-corpo");
     var sozinho = cx.querySelector("#c-sozinho");
-    sozinho.checked = localStorage.getItem("estante-sozinho") === "1";
+    try { sozinho.checked = localStorage.getItem("estante-sozinho") === "1"; } catch (e) {}
+    if (soLeitura()){
+      var rotuloSozinho = sozinho.parentNode;
+      rotuloSozinho.textContent = "posto de leitura";
+      rotuloSozinho.title = "Aqui eu só leio os códigos; o cadastro é na estante, dentro do Claude.";
+    }
     sozinho.addEventListener("change", function(){
       try { localStorage.setItem("estante-sozinho", sozinho.checked ? "1" : "0"); } catch (e) {}
     });
@@ -1796,6 +1850,7 @@ button.link:hover{color:var(--acento)}
       pararCamera();
       cx.remove();
       document.removeEventListener("keydown", tecla);
+      contarFilaNoBotao();
       if (guardados) render();
     }
     function tecla(ev){ if (ev.key === "Escape") sair(); }
@@ -1804,8 +1859,11 @@ button.link:hover{color:var(--acento)}
     document.addEventListener("keydown", tecla);
 
     function contar(){
-      cx.querySelector("#c-conta").textContent =
-        guardados ? guardados + (guardados > 1 ? " livros guardados" : " livro guardado") : "";
+      var txt = "";
+      if (soLeitura()) txt = fila.length + (fila.length === 1 ? " código lido" : " códigos lidos");
+      else if (fila.length) txt = fila.length + " na fila";
+      else if (guardados) txt = guardados + (guardados > 1 ? " livros guardados" : " livro guardado");
+      cx.querySelector("#c-conta").textContent = txt;
     }
 
     /* ---- tela 1: a câmera ---- */
@@ -1822,11 +1880,16 @@ button.link:hover{color:var(--acento)}
           '<span class="c-passo" id="c-recado">Ligando a câmera…</span>' +
           '<label class="bt pequeno" for="c-foto">Tirar foto do código</label>' +
           '<input type="file" id="c-foto" accept="image/*" capture="environment" hidden>' +
+          (soLeitura() && fila.length
+            ? '<button class="bt pequeno" id="c-verfila">Ver os ' + fila.length + ' lidos</button>'
+            : '') +
         '</div>';
       corpo.querySelector("#c-foto").addEventListener("change", function(ev){
         var f = ev.target.files[0]; ev.target.value = "";
         if (f) lerDaFoto(f);
       });
+      var verfila = corpo.querySelector("#c-verfila");
+      if (verfila) verfila.addEventListener("click", function(){ telaLidos(true); });
       video = corpo.querySelector("#c-video");
       candidato = ""; repetido = 0;
 
@@ -1935,8 +1998,15 @@ button.link:hover{color:var(--acento)}
         '<div class="c-fora">' +
           '<h3>' + esc(titulo) + '</h3>' +
           '<p class="vazio-txt">' + esc(texto) + '</p>' +
+          (NO_QUADRO ? '<p class="vazio-txt">Há ainda um caminho com a câmera ao vivo: ' +
+            'abrir esta mesma página numa aba do navegador, onde ela é dona da janela e ' +
+            'o navegador pergunta pela câmera do jeito normal. Lá eu leio um livro atrás ' +
+            'do outro e guardo os códigos; ao voltar para cá, eles aparecem prontos para ' +
+            'cadastrar.</p>' : '') +
           '<div class="acoes">' +
-            '<label class="bt forte" for="c-foto2">Tirar foto do código</label>' +
+            (NO_QUADRO ? '<a class="bt forte" id="c-aba" href="' + esc(enderecoAvulso()) +
+              '" target="_blank" rel="noopener">Ler com a câmera numa aba</a>' : '') +
+            '<label class="bt' + (NO_QUADRO ? '' : ' forte') + '" for="c-foto2">Tirar foto do código</label>' +
             '<input type="file" id="c-foto2" accept="image/*" capture="environment" hidden>' +
             '<button class="bt" id="c-manual2">Digitar o número</button>' +
             (tentarDeNovo ? '<button class="bt" id="c-tentar">Tentar a câmera de novo</button>' : '') +
@@ -1979,6 +2049,8 @@ button.link:hover{color:var(--acento)}
             if (!EAN.ehIsbn(codigo)){
               recado("Li " + codigo + ", que não é código de livro (ISBN começa com 978 ou 979).");
               candidato = ""; repetido = 0;
+            } else if (codigo === bloqueado){
+              candidato = ""; repetido = 0;      /* ainda é o livro de agora há pouco */
             } else {
               achou(codigo, video);
               return;
@@ -2059,6 +2131,80 @@ button.link:hover{color:var(--acento)}
       });
     }
 
+    /* ---- a fila lida na aba do navegador, esperando cadastro ---- */
+    function telaFila(){
+      pararCamera();
+      minhaVez();
+      corpo.className = "leitor-corpo";
+      corpo.innerHTML =
+        '<div class="c-fora">' +
+          '<h3>' + fila.length + (fila.length === 1 ? ' código lido' : ' códigos lidos') +
+          ' no navegador</h3>' +
+          '<p class="vazio-txt">Vieram da leitura em aba própria. Vou identificar um ' +
+          'por um, com o nicho sugerido, para você guardar.</p>' +
+          '<ul class="c-fila">' + fila.map(function(n){
+            return '<li class="mono">' + esc(EAN.bonito(n)) + '</li>'; }).join("") + '</ul>' +
+          '<div class="acoes">' +
+            '<button class="bt forte" id="c-comecar">Identificar o primeiro</button>' +
+            '<button class="bt" id="c-maiscodigos">Ler mais com a câmera</button>' +
+            '<button class="bt" id="c-limpar">Descartar a fila</button>' +
+          '</div>' +
+        '</div>';
+      corpo.querySelector("#c-comecar").addEventListener("click", proximoDaFila);
+      corpo.querySelector("#c-maiscodigos").addEventListener("click", function(){ telaCamera(); });
+      corpo.querySelector("#c-limpar").addEventListener("click", function(){
+        fila = []; filaGravar(fila); contar(); telaCamera();
+      });
+    }
+    function proximoDaFila(){
+      var isbn = fila.shift();
+      filaGravar(fila);
+      contar();
+      if (!isbn){ telaCamera(); return; }
+      identificarEMostrar(isbn, null);
+    }
+    /* Os códigos que esta aba já leu. Se o navegador deixou guardar, a
+       estante recolhe sozinha; se não deixou (janela anônima, dados de
+       site bloqueados) ou se a estante estiver em outro endereço, os
+       números ficam aqui para copiar e colar em Digitar o número. */
+    function telaLidos(comGaveta){
+      minhaVez();
+      corpo.className = "leitor-corpo";
+      var lista = fila.slice();
+      corpo.innerHTML =
+        '<div class="c-fora">' +
+          '<h3>' + lista.length + (lista.length === 1 ? ' código lido' : ' códigos lidos') + '</h3>' +
+          '<p class="vazio-txt">' + (comGaveta
+            ? 'Volte à estante, dentro do Claude, e eles aparecem lá prontos para ' +
+              'cadastrar. Se não aparecerem, copie os números daqui e use Digitar o ' +
+              'número — pode colar todos de uma vez.'
+            : 'Este navegador não deixa esta página guardar nada (janela anônima, ou ' +
+              'dados de site bloqueados), então copie os números e cole na estante, ' +
+              'em Digitar o número — pode colar todos de uma vez.') + '</p>' +
+          '<ul class="c-fila">' + lista.map(function(n){
+            return '<li class="mono">' + esc(EAN.bonito(n)) + '</li>'; }).join("") + '</ul>' +
+          '<div class="acoes">' +
+            '<button class="bt forte" id="c-voltarcam">Ler outro livro</button>' +
+            '<button class="bt" id="c-copiar">Copiar os números</button>' +
+            (comGaveta ? '<button class="bt" id="c-limpar2">Descartar</button>' : '') +
+            '<span class="salvo" id="c-copiado"></span>' +
+          '</div>' +
+        '</div>';
+      corpo.querySelector("#c-copiar").addEventListener("click", function(){
+        var txt = lista.join("\n"), aviso = corpo.querySelector("#c-copiado");
+        if (navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(txt).then(function(){ aviso.textContent = "copiado"; })
+            .catch(function(){ aviso.textContent = "copie da lista acima"; });
+        } else aviso.textContent = "copie da lista acima";
+      });
+      corpo.querySelector("#c-voltarcam").addEventListener("click", function(){ telaCamera(); });
+      var limpar2 = corpo.querySelector("#c-limpar2");
+      if (limpar2) limpar2.addEventListener("click", function(){
+        fila = []; filaGravar(fila); contar(); telaCamera();
+      });
+    }
+    function telaSemGaveta(){ telaLidos(false); }
+
     /* ---- tela 3: digitar o número na mão ---- */
     function telaDigitar(){
       pararCamera();
@@ -2067,9 +2213,10 @@ button.link:hover{color:var(--acento)}
       corpo.innerHTML =
         '<div class="c-fora">' +
           '<h3>ISBN impresso no livro</h3>' +
-          '<p class="vazio-txt">Os treze dígitos embaixo das barras. Hífens não atrapalham.</p>' +
+          '<p class="vazio-txt">Os treze dígitos embaixo das barras. Hífens não atrapalham, ' +
+          'e dá para colar vários de uma vez, um por linha.</p>' +
           '<div class="campos" style="max-width:340px">' +
-            '<input type="text" id="c-num" inputmode="numeric" placeholder="978-85-359-1484-9">' +
+            '<textarea id="c-num" rows="2" inputmode="numeric" placeholder="978-85-359-1484-9"></textarea>' +
             '<div class="acoes" style="margin:2px 0 0">' +
               '<button class="bt forte" id="c-ok">Procurar este livro</button>' +
               '<button class="bt" id="c-volta4">Voltar à câmera</button>' +
@@ -2080,23 +2227,47 @@ button.link:hover{color:var(--acento)}
       var campo = corpo.querySelector("#c-num");
       campo.focus();
       var enviar = function(){
-        var n = campo.value.replace(/\D/g, "");
-        if (!EAN.ehIsbn(n)){
+        var cru = campo.value || "";
+        var achados = (cru.match(/\d[\d\s-]{11,}\d/g) || [])
+          .map(function(t){ return t.replace(/\D/g, ""); })
+          .filter(function(n){ return EAN.ehIsbn(n); });
+        if (!achados.length){
+          var n = cru.replace(/\D/g, "");
           corpo.querySelector("#c-erro").textContent = n.length === 13
             ? "Esse número não fecha a conta de verificação."
-            : "Faltam dígitos: o ISBN tem treze.";
+            : (n.length ? "Faltam dígitos: o ISBN tem treze." : "Escreva o número.");
           return;
         }
-        achou(n, null);
+        if (achados.length > 1){            /* colou uma pilha de códigos */
+          fila = fila.concat(achados.slice(1).filter(function(n){ return fila.indexOf(n) < 0; }));
+          filaGravar(fila);
+          contar();
+        }
+        achou(achados[0], null);
       };
       corpo.querySelector("#c-ok").addEventListener("click", enviar);
-      campo.addEventListener("keydown", function(ev){ if (ev.key === "Enter") enviar(); });
+      campo.addEventListener("keydown", function(ev){
+        if (ev.key === "Enter" && !ev.shiftKey){ ev.preventDefault(); enviar(); }
+      });
       corpo.querySelector("#c-volta4").addEventListener("click", function(){ telaCamera(); });
     }
 
     /* ---- achou o código: guarda a foto do momento e vai identificar ---- */
     function achou(isbn, fonte){
       if (navigator.vibrate) { try { navigator.vibrate(60); } catch (e) {} }
+      if (soLeitura()){                   /* posto de leitura: só leio e enfileiro */
+        if (fila.indexOf(isbn) < 0) fila.push(isbn);
+        var coube = filaGravar(fila);
+        bloqueado = isbn;
+        setTimeout(function(){ if (bloqueado === isbn) bloqueado = ""; }, 4000);
+        contar();
+        if (!coube){ pararCamera(); telaSemGaveta(); return; }
+        recado("Lido " + EAN.bonito(isbn) + " \u2014 " + fila.length +
+          (fila.length === 1 ? " código na fila." : " códigos na fila.") +
+          " Pode passar o próximo livro.");
+        candidato = ""; repetido = 0;
+        return;                           /* a câmera continua ligada */
+      }
       if (fonte instanceof Blob){ pararCamera(); identificarEMostrar(isbn, fonte); return; }
       /* fonte é o vídeo: tira uma foto do quadro antes de desligar */
       var retrato = null;
@@ -2180,7 +2351,7 @@ button.link:hover{color:var(--acento)}
           ano:r.ano, nicho:nicho, sinopse:r.sinopse, gostar:r.gostar });
         guardados++; contar();
         avisoRapido(titulo + " → " + nicho + " " + apelidoDe(nicho), livro.id);
-        telaCamera();
+        if (fila.length) proximoDaFila(); else telaCamera();
         return;
       }
 
@@ -2227,7 +2398,8 @@ button.link:hover{color:var(--acento)}
             (titulo ? '' : '<button class="bt forte" id="c-pelotitulo">Identificar pelo título</button>') +
             '<button class="bt' + (titulo ? ' forte' : '') + '" id="c-guardar">Guardar na estante</button>' +
             '<button class="bt" id="c-ajustar">Ajustar a ficha</button>' +
-            '<button class="bt" id="c-outro">Ler outro código</button>' +
+            '<button class="bt" id="c-outro">' +
+              (fila.length ? 'Próximo da fila (' + fila.length + ')' : 'Ler outro código') + '</button>' +
             (sample && podeImagem !== false ? '<label class="bt" for="c-capa">Fotografar a capa</label>' +
               '<input type="file" id="c-capa" accept="image/*" capture="environment" hidden>' : '') +
           '</div>' +
@@ -2275,14 +2447,16 @@ button.link:hover{color:var(--acento)}
         var livro = cadastrar(d);
         guardados++; contar();
         avisoRapido(d.titulo + " → " + d.nicho + " " + apelidoDe(d.nicho), livro.id);
-        telaCamera();
+        if (fila.length) proximoDaFila(); else telaCamera();
       });
       corpo.querySelector("#c-ajustar").addEventListener("click", function(){
         var d = pegar();
         sair();
         abrirNovo(null, d);
       });
-      corpo.querySelector("#c-outro").addEventListener("click", function(){ telaCamera(); });
+      corpo.querySelector("#c-outro").addEventListener("click", function(){
+        if (fila.length) proximoDaFila(); else telaCamera();
+      });
       var capa = corpo.querySelector("#c-capa");
       if (capa) capa.addEventListener("change", function(ev){
         var f = ev.target.files[0]; ev.target.value = "";
@@ -2298,7 +2472,7 @@ button.link:hover{color:var(--acento)}
       });
     }
 
-    telaCamera();
+    if (!soLeitura() && fila.length) telaFila(); else telaCamera();
     contar();
   }
 
@@ -2385,7 +2559,20 @@ button.link:hover{color:var(--acento)}
 
   desenharGrade(); editoras(); autores(); render();
 
+  /* a fila lida na aba do navegador, conferida a cada volta para a página */
+  contarFilaNoBotao();
+  window.addEventListener("focus", contarFilaNoBotao);
+  document.addEventListener("visibilitychange", function(){
+    if (!document.hidden) contarFilaNoBotao();
+  });
+  /* a aba aberta só para ler já entra na câmera */
+  if (/[?&]leitura=1/.test(location.search)) abrirLeituraCodigo();
+
   if (window.claude && window.claude.use){
+    var respostas = 0;
+    var anotarResposta = function(){
+      if (++respostas >= 2){ plataformaRespondeu = true; contarFilaNoBotao(); }
+    };
     window.claude.use("db").then(function(d){
       if (!d) return;
       db = d;
@@ -2413,14 +2600,15 @@ button.link:hover{color:var(--acento)}
         if (primeira && abertoId){ var a = abertoId; fechar(); abrir(a); }
         primeira = false;
       }, function(){});
-    }).catch(function(){});
+    }).catch(function(){}).then(anotarResposta);
     window.claude.use("assets").then(function(a){ assets = a; }).catch(function(){});
     /* quem identifica o livro pelo ISBN e escolhe o nicho */
     window.claude.use("sample").then(function(s){
       if (!s) return;
       sample = s;
+      contarFilaNoBotao();
       return s.limits().then(function(lim){ podeImagem = !!(lim && lim.images); });
-    }).catch(function(){});
+    }).catch(function(){}).then(anotarResposta);
   }
 })();
 </script>

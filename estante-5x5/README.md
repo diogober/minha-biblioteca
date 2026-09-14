@@ -11,6 +11,10 @@ Fonte do artefato publicado em
   leitor-ean.teste.js`): códigos sintéticos com borrão, ruído, luz
   torta, livro de cabeça para baixo, celular deitado, e a garantia de
   que ruído puro nunca vira um código.
+- `aba-avulsa.teste.js` — o posto de leitura: a aba lê sem parar e
+  enfileira, e a estante dentro do quadro recolhe a fila e cadastra
+  (usa `quadro.teste.html`, que põe a estante dentro de um quadro como o
+  aplicativo faz). Precisa da página servida por http.
 - `sem-foto.teste.js` — o caso do ISBN desconhecido numa visualização
   que não manda imagem: o pedido não pode prometer foto que não vai, e a
   ficha tem de oferecer o caminho do título.
@@ -36,21 +40,33 @@ Cadastro de livro novo pelo código de barras da contracapa:
    (aguenta foto fora de foco) e o código só vale quando sai igual em
    duas linhas e em dois quadros diferentes — a soma de verificação
    sozinha deixa passar um erro em cada dez.
-2. Sem câmera disponível, dá para fotografar o código ou digitar o
+2. Dentro do aplicativo do Claude a estante roda num quadro que não
+   entrega a câmera à página (permissão do aparelho não resolve: quem
+   nega é o quadro). Para esse caso há o **posto de leitura**: o botão
+   "Ler com a câmera numa aba" abre esta mesma página em aba própria,
+   onde ela é dona da janela e o navegador pergunta pela câmera do jeito
+   normal. Lá ela lê um livro atrás do outro sem parar e guarda os
+   códigos numa fila (localStorage, mesma origem); de volta à estante, o
+   botão vira "Cadastrar N códigos lidos" e cada um passa pela
+   identificação de sempre. Se o navegador não deixar guardar nada, a
+   aba mostra os números para copiar, e Digitar o número aceita vários
+   colados de uma vez. Quem decide se a página é estante ou posto de
+   leitura são as capacidades que responderem, não o formato da janela.
+3. Sem câmera disponível, dá para fotografar o código ou digitar o
    número; se as barras não saírem legíveis na foto, o Claude lê os
    algarismos impressos. A página distingue os dois motivos de a câmera
    não abrir — o quadro em que ela roda não liberar a câmera (pela
    política de permissões do documento, e aí não há ajuste que resolva)
    ou o navegador ter bloqueado o site — e só ensina a liberar quando
    liberar adianta.
-3. Com o ISBN em mãos, o Claude identifica o volume — a foto do momento
+4. Com o ISBN em mãos, o Claude identifica o volume — a foto do momento
    vai junto, quando a visualização deixa mandar imagem — e escolhe o
    nicho olhando o que já está guardado em cada um. Volta título, autor,
    editora, ano, sinopse e o porquê do nicho. O número sozinho é pista
    fraca (a numeração do ISBN não guarda o título, e a página não
    alcança catálogo nenhum): quando não dá para reconhecer, a ficha pede
    o título e o Claude completa o resto a partir dele.
-4. A ficha aparece para conferência (com aviso se o livro já estiver na
+5. A ficha aparece para conferência (com aviso se o livro já estiver na
    estante) e um toque guarda. Marcando "guardar sozinho", volume
    reconhecido com confiança alta e sem repetição entra direto, com
    "desfazer" à mão, e a câmera volta para o próximo.

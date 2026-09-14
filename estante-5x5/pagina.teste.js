@@ -236,26 +236,25 @@ const FINGE_CLAUDE = `
   console.log("desfazer: ok (" + antesDesfazer + " → " + sobrou + ")");
   await pag.click("#c-fechar");
 
-  /* ---- 4. sem o Claude: cai no formulário ---- */
+  /* ---- 4. sem o Claude e sem banco: a página vira posto de leitura ---- */
   const pag2 = await ctx.newPage();
   await pag2.addInitScript(`window.claude = { use: function(){ return Promise.resolve(null); } };`);
   await pag2.goto("file://" + path.join(RAIZ, "index.html"));
   await pag2.waitForSelector(".item");
+  await pag2.evaluate(() => localStorage.removeItem("estante-fila-codigos"));
   await pag2.click("#b-codigo");
   await pag2.click("#c-digitar");
   await pag2.fill("#c-num", "9788535914849");
   await pag2.click("#c-ok");
-  await pag2.waitForSelector("#c-naform", { timeout: 8000 });
-  console.log("sem Claude:", await pag2.textContent("#c-estado"));
-  await pag2.click("#c-naform");
-  await pag2.waitForSelector("#n-isbn");
-  if ((await pag2.inputValue("#n-isbn")) !== "9788535914849")
-    throw new Error("o formulário não recebeu o ISBN");
-  console.log("formulário recebeu o ISBN: ok");
+  await pag2.waitForFunction(
+    () => /na fila|código lido/.test(document.querySelector("#c-conta")?.textContent || ""),
+    { timeout: 10000 });
+  const guardadoNaFila = await pag2.evaluate(() => localStorage.getItem("estante-fila-codigos"));
+  console.log("sem Claude, o código vai para a fila:", guardadoNaFila);
+  if (!/9788535914849/.test(guardadoNaFila || ""))
+    throw new Error("não enfileirou o código onde não há como cadastrar");
 
   /* ---- 5. número inválido ---- */
-  await pag2.click("#p-fechar");
-  await pag2.click("#b-codigo");
   await pag2.click("#c-digitar");
   await pag2.fill("#c-num", "9788535914840");
   await pag2.click("#c-ok");
