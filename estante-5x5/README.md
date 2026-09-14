@@ -67,7 +67,9 @@ Cadastro de livro novo pelo código de barras da contracapa:
    número de cor. O botão "Fotografar a capa" aparece na barra da
    câmera, na tela de câmera indisponível e na ficha de um volume não
    reconhecido. Onde a imagem não passa, a recusa é explicada e o
-   caminho do título fica ali mesmo.
+   caminho do título fica ali mesmo — junto com a saída que não exige
+   digitar nada: mandar a foto na conversa com o Claude, que enxerga
+   imagens normalmente e escreve direto no banco desta estante.
 5. Com o ISBN em mãos, o Claude identifica o volume — a foto do momento
    vai junto, quando a visualização deixa mandar imagem — e escolhe o
    nicho olhando o que já está guardado em cada um. Volta título, autor,

@@ -104,6 +104,10 @@ async function cena(nav, passaImagem, teste){
     console.log("sem imagem:", titulo);
     if (!/não deixa a foto chegar/.test(titulo))
       throw new Error("não explicou que a foto não passou: " + titulo);
+    const conversa = await pag.textContent(".c-chat");
+    console.log("saída sem digitar:", conversa.replace(/\s+/g, " ").trim().slice(0, 90) + "…");
+    if (!/mande a foto do livro na conversa/.test(conversa))
+      throw new Error("não ofereceu o caminho da conversa");
     await pag.fill("#c-tit2", "Grande Sertão: Veredas");
     await pag.click("#c-portitulo2");
     await pag.waitForSelector(".c-achado h3", { timeout: 15000 });

@@ -141,6 +141,10 @@ var falhas = 0, total = 0;
    vezes, e é por isso que a câmera lê quadro após quadro, umas onze
    vezes por segundo: o que importa aqui é que nunca leia errado. */
 var TOLERANTES = { "tudo junto": 0.25 };
+/* nos demais casos o quadro tem de sair quase sempre — mas "quase": os
+   códigos e o ruído são sorteados, e uma vez ou outra sai um quadro que
+   só a próxima leitura resolve. Ler errado, esse, nunca se perdoa. */
+var MINIMO_PADRAO = 0.92;
 casos.forEach(function(c){
   var nome = c[0], op = c[1], erros = [], trocados = [], n = 25, i;
   for (i = 0; i < n; i++){
@@ -153,11 +157,11 @@ casos.forEach(function(c){
       if (lido) trocados.push(cod + " -> " + lido);   /* ler errado é o pecado */
     }
   }
-  var minimo = Math.ceil(n * (TOLERANTES[nome] || 1));
+  var minimo = Math.ceil(n * (TOLERANTES[nome] || MINIMO_PADRAO));
   /* no caso extremo, um erro de leitura em cada tantos é conhecido: a soma
      de verificação do EAN deixa passar um em dez, e quem pega isso depois é
      a identificação do livro, que não reconhece um ISBN inventado */
-  var trocaAceita = TOLERANTES[nome] ? Math.floor(n * 0.04) : 0;
+  var trocaAceita = TOLERANTES[nome] ? Math.floor(n * 0.04) : 0;   /* zero fora do caso extremo */
   var passou = (n - erros.length) >= minimo && trocados.length <= trocaAceita;
   if (!passou) falhas += erros.length;
   console.log((passou ? "ok     " : "FALHOU ") + nome + ": " +

@@ -278,6 +278,9 @@ button.link:hover{color:var(--acento)}
   background:var(--tinta); color:var(--fundo); border-radius:3px; padding:10px 14px;
   font-size:13.5px; display:flex; gap:14px; align-items:center; flex-wrap:wrap;
   max-width:calc(100% - 32px); box-shadow:var(--sombra)}
+.c-chat{font-size:13.5px; line-height:1.55; color:var(--tinta2); background:var(--superficie);
+  border-left:2px solid var(--azul); padding:11px 13px; margin:14px 0 0}
+.c-chat .link{font-size:13.5px; color:var(--azul)}
 .c-fila{list-style:none; margin:16px 0 0; padding:0; display:flex; flex-wrap:wrap; gap:8px}
 .c-fila li{border:1px solid var(--linha2); border-radius:2px; padding:5px 9px; font-size:12.5px;
   color:var(--tinta2); background:var(--superficie)}
@@ -1707,6 +1710,26 @@ button.link:hover{color:var(--acento)}
     });
   }
 
+  /* Quando a janela não deixa a foto passar, sobra o caminho de fora: na
+     conversa com o Claude, a foto chega normalmente, e de lá ele escreve
+     direto no banco desta estante. Isso não custa digitar título nenhum. */
+  function linhaConversa(isbn){
+    return '<p class="c-chat">Sem digitar nada: feche a estante e mande a foto do ' +
+      'livro na conversa com o Claude' + (isbn ? ', com este número' : '') +
+      '. Lá a foto chega, ele identifica e cadastra direto aqui na estante.' +
+      (isbn ? ' <button class="link" id="c-copiaisbn">copiar o número</button>' : '') + '</p>';
+  }
+  function ligarCopia(onde, isbn){
+    var b = onde.querySelector("#c-copiaisbn");
+    if (!b) return;
+    b.addEventListener("click", function(){
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(isbn).then(function(){ b.textContent = "copiado"; })
+          .catch(function(){ b.textContent = isbn; });
+      } else b.textContent = isbn;
+    });
+  }
+
   /* ---- a conversa com o Claude ---- */
   function fichaPedida(){
     return "Responda só com um objeto JSON assim:\n" +
@@ -2268,8 +2291,9 @@ button.link:hover{color:var(--acento)}
             '<p class="vazio-txt">' + (semImagem
               ? "Não é a câmera: a foto sai daqui, mas esta janela não passa imagens " +
                 "adiante. Abrindo a estante no navegador (claude.ai no Safari ou no " +
-                "Chrome) a capa costuma passar. Daqui, o caminho é escrever o título."
+                "Chrome) a capa costuma passar."
               : "Tente de novo, ou escreva o título — eu completo o resto.") + '</p>' +
+            (semImagem ? linhaConversa(isbn) : '') +
             '<div class="campos" style="max-width:340px">' +
               '<input type="text" id="c-tit2" placeholder="Título">' +
               '<input type="text" id="c-aut2" placeholder="Autor (se souber)">' +
@@ -2297,6 +2321,7 @@ button.link:hover{color:var(--acento)}
               aviso: recadoDeErro(e2) });
           });
         };
+        ligarCopia(corpo, isbn);
         corpo.querySelector("#c-portitulo2").addEventListener("click", mandar);
         corpo.querySelector("#c-voltacam2").addEventListener("click", function(){ telaCamera(); });
       });
@@ -2476,7 +2501,7 @@ button.link:hover{color:var(--acento)}
               ? 'Nesta visualização eu também não consigo enxergar fotos. '
               : '') +
             'Escreva o título como está na capa e eu completo o resto: autor, ' +
-            'editora, sinopse e o nicho.</p>' : '') +
+            'editora, sinopse e o nicho.</p>' + linhaConversa(isbn) : '') +
           (iguais.length
             ? '<div class="aviso">Já há na estante: ' + iguais.map(function(l){
                 return esc(l.t) + " (nº " + l.num + ", " + nichoDe(l) + ")"; }).join("; ") +
@@ -2510,6 +2535,7 @@ button.link:hover{color:var(--acento)}
           sinopse: t.trim() === titulo ? r.sinopse : "",
           gostar: t.trim() === titulo ? r.gostar : "" };
       };
+      ligarCopia(corpo, isbn);
       var pedirPeloTitulo = corpo.querySelector("#c-pelotitulo");
       if (pedirPeloTitulo) pedirPeloTitulo.addEventListener("click", function(){
         var campo = corpo.querySelector("#c-titulo");
