@@ -11,6 +11,9 @@ Fonte do artefato publicado em
   leitor-ean.teste.js`): códigos sintéticos com borrão, ruído, luz
   torta, livro de cabeça para baixo, celular deitado, e a garantia de
   que ruído puro nunca vira um código.
+- `camera-negada.teste.js` — testes do recado que aparece quando a câmera
+  não abre: quadro sem permissão de câmera, usuário que negou, aparelho
+  sem câmera.
 - `pagina.teste.js` / `camera.teste.js` — testes da página num Chromium,
   com o `window.claude` de mentira (`npm i playwright`, depois `node
   pagina.teste.js`). O da câmera precisa da página servida por http
@@ -30,9 +33,13 @@ Cadastro de livro novo pelo código de barras da contracapa:
    (aguenta foto fora de foco) e o código só vale quando sai igual em
    duas linhas e em dois quadros diferentes — a soma de verificação
    sozinha deixa passar um erro em cada dez.
-2. Sem câmera disponível (a visualização pode não liberar), dá para
-   fotografar o código ou digitar o número; se as barras não saírem
-   legíveis na foto, o Claude lê os algarismos impressos.
+2. Sem câmera disponível, dá para fotografar o código ou digitar o
+   número; se as barras não saírem legíveis na foto, o Claude lê os
+   algarismos impressos. A página distingue os dois motivos de a câmera
+   não abrir — o quadro em que ela roda não liberar a câmera (pela
+   política de permissões do documento, e aí não há ajuste que resolva)
+   ou o navegador ter bloqueado o site — e só ensina a liberar quando
+   liberar adianta.
 3. Com o ISBN em mãos, o Claude identifica o volume — a foto do momento
    vai junto — e escolhe o nicho olhando o que já está guardado em cada
    um. Volta título, autor, editora, ano, sinopse e o porquê do nicho.

@@ -278,6 +278,7 @@ button.link:hover{color:var(--acento)}
   background:var(--tinta); color:var(--fundo); border-radius:3px; padding:10px 14px;
   font-size:13.5px; display:flex; gap:14px; align-items:center; flex-wrap:wrap;
   max-width:calc(100% - 32px); box-shadow:var(--sombra)}
+.c-miudo{font-size:11.5px; color:var(--tinta3); margin:22px 0 0; word-break:break-word}
 .recado .link{color:var(--fundo); opacity:.8; font-size:13px}
 @media (max-width:560px){
   /* no celular a barra de cima é só para os botões */
@@ -1781,7 +1782,7 @@ button.link:hover{color:var(--acento)}
       candidato = ""; repetido = 0;
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-        semCamera("Esta visualização não dá acesso à câmera.");
+        semCamera({ name: "SemApi" });
         return;
       }
       navigator.mediaDevices.getUserMedia({
@@ -1803,9 +1804,7 @@ button.link:hover{color:var(--acento)}
         varrer(vez);
       }).catch(function(e){
         if (!aindaEmCartaz(vez)) return;
-        semCamera(e && e.name === "NotAllowedError"
-          ? "A câmera não foi autorizada."
-          : "Não consegui abrir a câmera aqui.");
+        semCamera(e);
       });
     }
 
@@ -1813,28 +1812,106 @@ button.link:hover{color:var(--acento)}
       var r = corpo.querySelector("#c-recado");
       if (r) r.textContent = txt;
     }
-    function semCamera(motivo){
+    /* Quando a câmera não abre, há dois motivos bem diferentes, e só um
+       deles se resolve nos ajustes do aparelho: ou o quadro em que esta
+       página roda não recebeu permissão de câmera (aí não adianta mexer
+       em nada), ou o navegador bloqueou a câmera para o site. O primeiro
+       dá para saber na hora, pela política de permissões do documento. */
+    function quadroLiberaCamera(){
+      try {
+        var pp = document.permissionsPolicy || document.featurePolicy;
+        if (pp && pp.allowsFeature) return pp.allowsFeature("camera");
+      } catch (e) {}
+      return null;                                  /* navegador não conta */
+    }
+    function ondeEstamos(){
+      var ua = navigator.userAgent || "";
+      if (/iPhone|iPad|iPod/.test(ua) ||
+          (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "ios";
+      if (/Android/.test(ua)) return "android";
+      if (/Macintosh|Mac OS X/.test(ua)) return "mac";
+      return "outro";
+    }
+    function comoLiberar(){
+      var onde = ondeEstamos();
+      if (onde === "ios") return "No iPhone ou iPad, pelo Safari: toque no " +
+        "\u201caA\u201d à esquerda da barra de endereço, depois em Ajustes do Site, " +
+        "e ponha a Câmera em Perguntar ou Permitir. Pelo aplicativo do Claude: " +
+        "Ajustes do aparelho \u203a Claude \u203a Câmera.";
+      if (onde === "android") return "No Android, pelo Chrome: toque no cadeado à " +
+        "esquerda do endereço \u203a Permissões \u203a Câmera \u203a Permitir, e recarregue a página.";
+      if (onde === "mac") return "No Mac: clique no ícone à esquerda do endereço " +
+        "(cadeado ou câmera) e libere a câmera para claude.ai; se for o aplicativo " +
+        "do Claude, veja também Ajustes do Sistema \u203a Privacidade e Segurança \u203a Câmera.";
+      return "No navegador, clique no ícone à esquerda da barra de endereço " +
+        "(cadeado ou câmera), libere a câmera para claude.ai e recarregue a página.";
+    }
+
+    function semCamera(erro){
       pararCamera();
       minhaVez();
       corpo.className = "leitor-corpo";
+      var nome = (erro && erro.name) || "";
+      var detalhe = (erro && erro.message) ? String(erro.message) : "";
+      var liberado = quadroLiberaCamera();
+      var titulo, texto, tentarDeNovo = true;
+
+      if (nome === "NotFoundError" || nome === "OverconstrainedError"){
+        titulo = "Não achei câmera neste aparelho.";
+        texto = "Tire a foto do código por outro caminho, ou digite o ISBN.";
+      } else if (liberado === false || nome === "SemApi"){
+        titulo = "Esta janela não libera a câmera.";
+        texto = "A estante roda dentro de um quadro da página do Claude, e esse " +
+          "quadro não recebeu permissão de câmera — não é coisa que se resolva nos " +
+          "ajustes do aparelho. O caminho de sempre continua aberto e dá no mesmo: " +
+          "a foto abre a câmera do sistema e eu leio o código nela.";
+        tentarDeNovo = false;
+      } else if (nome === "NotAllowedError" || nome === "SecurityError"){
+        titulo = "A câmera não foi autorizada.";
+        texto = comoLiberar() + " Depois toque em Tentar a câmera de novo. " +
+          "Se nem aparecer pergunta nenhuma, é o quadro desta página que não " +
+          "libera a câmera — então fique com a foto, que dá no mesmo.";
+      } else if (nome === "NotReadableError" || nome === "AbortError"){
+        titulo = "A câmera está ocupada por outro aplicativo.";
+        texto = "Feche quem estiver usando a câmera e tente de novo, ou tire a foto do código.";
+      } else {
+        titulo = "Não consegui abrir a câmera aqui.";
+        texto = "Tire uma foto do código de barras, que eu leio os números nela. " +
+          "Ou digite o ISBN impresso embaixo das barras.";
+      }
+
       corpo.innerHTML =
         '<div class="c-fora">' +
-          '<h3>' + esc(motivo) + '</h3>' +
-          '<p class="vazio-txt">Dá na mesma: tire uma foto do código de barras, ' +
-          'que eu leio os números nela. Ou digite o ISBN impresso embaixo das barras.</p>' +
+          '<h3>' + esc(titulo) + '</h3>' +
+          '<p class="vazio-txt">' + esc(texto) + '</p>' +
           '<div class="acoes">' +
             '<label class="bt forte" for="c-foto2">Tirar foto do código</label>' +
             '<input type="file" id="c-foto2" accept="image/*" capture="environment" hidden>' +
             '<button class="bt" id="c-manual2">Digitar o número</button>' +
-            '<button class="bt" id="c-tentar">Tentar a câmera de novo</button>' +
+            (tentarDeNovo ? '<button class="bt" id="c-tentar">Tentar a câmera de novo</button>' : '') +
           '</div>' +
+          (detalhe ? '<p class="c-miudo mono">' + esc(nome + ": " + detalhe) + '</p>' : '') +
         '</div>';
       corpo.querySelector("#c-foto2").addEventListener("change", function(ev){
         var f = ev.target.files[0]; ev.target.value = "";
         if (f) lerDaFoto(f);
       });
       corpo.querySelector("#c-manual2").addEventListener("click", function(){ telaDigitar(); });
-      corpo.querySelector("#c-tentar").addEventListener("click", function(){ telaCamera(); });
+      var outra = corpo.querySelector("#c-tentar");
+      if (outra) outra.addEventListener("click", function(){ telaCamera(); });
+
+      /* o navegador pode dizer se foi o usuário que negou; nem todos sabem.
+         Não vale perguntar quando o quadro é que não libera a câmera: aí a
+         resposta é sempre "ainda não perguntei", e não é disso que se trata. */
+      if (navigator.permissions && navigator.permissions.query && liberado !== false &&
+          (nome === "NotAllowedError" || nome === "SecurityError")){
+        navigator.permissions.query({ name: "camera" }).then(function(p){
+          var alvo = corpo.querySelector(".c-fora h3");
+          if (!alvo || !p) return;
+          if (p.state === "denied") alvo.textContent = "A câmera está bloqueada para este site.";
+          else if (p.state === "prompt") alvo.textContent = "A câmera ainda não foi autorizada.";
+        }).catch(function(){});
+      }
     }
 
     /* um quadro a cada 90 ms; o mesmo código tem de sair em dois quadros
@@ -1891,7 +1968,8 @@ button.link:hover{color:var(--acento)}
       };
       img.onerror = function(){
         URL.revokeObjectURL(url);
-        if (aindaEmCartaz(vez)) semCamera("Não consegui abrir essa foto.");
+        if (aindaEmCartaz(vez)) semCamera({ name: "FotoRuim",
+          message: "não consegui abrir essa foto" });
       };
       img.src = url;
     }
