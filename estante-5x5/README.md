@@ -15,6 +15,10 @@ Fonte do artefato publicado em
   enfileira, e a estante dentro do quadro recolhe a fila e cadastra
   (usa `quadro.teste.html`, que põe a estante dentro de um quadro como o
   aplicativo faz). Precisa da página servida por http.
+- `pendentes.teste.js` — a foto tirada onde a imagem não chega ao Claude
+  da página: tem de ser encolhida para caber no documento do banco,
+  entrar em `pendentes`, aparecer no aviso da estante e sumir quando o
+  livro é cadastrado.
 - `capa.teste.js` — identificação pela foto da capa: onde a imagem
   passa, e onde não passa (aí tem de explicar e oferecer o título).
 - `sem-foto.teste.js` — o caso do ISBN desconhecido numa visualização
@@ -67,9 +71,12 @@ Cadastro de livro novo pelo código de barras da contracapa:
    número de cor. O botão "Fotografar a capa" aparece na barra da
    câmera, na tela de câmera indisponível e na ficha de um volume não
    reconhecido. Onde a imagem não passa, a recusa é explicada e o
-   caminho do título fica ali mesmo — junto com a saída que não exige
-   digitar nada: mandar a foto na conversa com o Claude, que enxerga
-   imagens normalmente e escreve direto no banco desta estante.
+   a foto **fica guardada na própria estante**: a página encolhe o
+   retrato até caber nos 256 KB de um documento do banco e grava em
+   `pendentes`. O Claude da conversa lê o banco, enxerga a foto,
+   identifica o livro e cadastra — a foto some da lista quando o volume
+   entra. Fotografar no celular continua sendo tudo o que se faz; a
+   estante mostra quantas fotos esperam, e a galeria delas.
 5. Com o ISBN em mãos, o Claude identifica o volume — a foto do momento
    vai junto, quando a visualização deixa mandar imagem — e escolhe o
    nicho olhando o que já está guardado em cada um. Volta título, autor,

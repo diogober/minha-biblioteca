@@ -94,25 +94,26 @@ async function cena(nav, passaImagem, teste){
     console.log("guardado:", (await pag.textContent(".recado")).replace(/\s+/g," ").trim());
   });
 
-  /* ---- 2. onde a foto não passa: diz por que, e oferece o título ---- */
+  /* ---- 2. onde a foto não passa: a página guarda a foto para o Claude
+       da conversa, em vez de mandar o dono digitar ---- */
   await cena(nav, false, async pag => {
     await pag.click("#b-codigo");
     await pag.waitForSelector(".c-fora #c-capa3", { state: "attached", timeout: 10000 });
     await pag.setInputFiles(".c-fora #c-capa3", foto);
-    await pag.waitForSelector(".c-fora h3", { timeout: 15000 });
+    await pag.waitForSelector(".c-retrato", { timeout: 20000 });
     const titulo = (await pag.textContent(".c-fora h3")).trim();
     console.log("sem imagem:", titulo);
-    if (!/não deixa a foto chegar/.test(titulo))
-      throw new Error("não explicou que a foto não passou: " + titulo);
-    const conversa = await pag.textContent(".c-chat");
-    console.log("saída sem digitar:", conversa.replace(/\s+/g, " ").trim().slice(0, 90) + "…");
-    if (!/mande a foto do livro na conversa/.test(conversa))
-      throw new Error("não ofereceu o caminho da conversa");
-    await pag.fill("#c-tit2", "Grande Sertão: Veredas");
-    await pag.click("#c-portitulo2");
-    await pag.waitForSelector(".c-achado h3", { timeout: 15000 });
-    console.log("pelo título, então:", (await pag.textContent(".c-achado h3")).trim(),
-      "| nicho:", await pag.inputValue("#c-nicho"));
+    if (!/Foto guardada/.test(titulo))
+      throw new Error("não guardou a foto para o Claude da conversa: " + titulo);
+    const guardada = await pag.evaluate(() => {
+      const k = Object.keys(window.__db || {}).find(k => k.startsWith("pendentes/"));
+      return k ? window.__db[k].estado : null;
+    });
+    if (guardada !== "aguardando") throw new Error("a foto não entrou no banco");
+    const recado = await pag.textContent(".c-fora .vazio-txt");
+    if (!/cadastre as fotos pendentes/.test(recado))
+      throw new Error("não disse o que pedir na conversa");
+    console.log("a foto ficou no banco, esperando o Claude da conversa: ok");
   });
 
   await nav.close();

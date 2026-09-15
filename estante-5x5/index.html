@@ -278,6 +278,13 @@ button.link:hover{color:var(--acento)}
   background:var(--tinta); color:var(--fundo); border-radius:3px; padding:10px 14px;
   font-size:13.5px; display:flex; gap:14px; align-items:center; flex-wrap:wrap;
   max-width:calc(100% - 32px); box-shadow:var(--sombra)}
+.pilula.sinal-foto{border-color:var(--azul); color:var(--azul)}
+.c-retrato{display:block; max-width:200px; width:100%; border:1px solid var(--linha);
+  border-radius:2px; margin:0 0 16px}
+.fotos{display:flex; flex-wrap:wrap; gap:12px; margin:14px 0 0}
+.fotos figure{margin:0; width:120px}
+.fotos img{width:100%; border:1px solid var(--linha); border-radius:2px; display:block}
+.fotos figcaption{font-size:11px; color:var(--tinta3); margin-top:4px}
 .c-chat{font-size:13.5px; line-height:1.55; color:var(--tinta2); background:var(--superficie);
   border-left:2px solid var(--azul); padding:11px 13px; margin:14px 0 0}
 .c-chat .link{font-size:13.5px; color:var(--azul)}
@@ -327,6 +334,7 @@ button.link:hover{color:var(--acento)}
     <button class="pilula" id="f-notas" aria-pressed="false">Com anotação</button>
     <button class="pilula" id="f-limpar">Limpar</button>
     <button class="pilula forte" id="b-codigo">Ler código de barras</button>
+    <button class="pilula sinal-foto" id="b-pendentes" hidden></button>
     <button class="pilula" id="b-novo">+ Livro novo</button>
     <span class="contagem" id="contagem"></span>
   </div>
@@ -361,6 +369,7 @@ button.link:hover{color:var(--acento)}
   }
   var estado = {};            // id -> {lido, comentario, fichas:[]}
   var db = null, assets = null;
+  var pendentes = {};        /* fotos guardadas esperando o Claude da conversa */
   var filtro = { nicho:"", texto:"", editora:"", lidos:0, notas:0 };
   var abertoId = null, primeira = true;
 
@@ -1257,6 +1266,7 @@ button.link:hover{color:var(--acento)}
   });
   $("#b-novo").addEventListener("click", function(){ abrirNovo(); });
   $("#b-codigo").addEventListener("click", function(){ abrirLeituraCodigo(); });
+  $("#b-pendentes").addEventListener("click", verPendentes);
   /* códigos lidos na aba do navegador esperando cadastro: o botão avisa */
   function contarFilaNoBotao(){
     var n = filaLer().length, b = $("#b-codigo");
@@ -1710,6 +1720,95 @@ button.link:hover{color:var(--acento)}
     });
   }
 
+  function contarPendentes(){
+    var b = $("#b-pendentes"), lista = Object.keys(pendentes);
+    if (!b) return;
+    if (!lista.length){ b.hidden = true; return; }
+    b.hidden = false;
+    b.textContent = lista.length + (lista.length === 1
+      ? " foto esperando o Claude" : " fotos esperando o Claude");
+  }
+  function verPendentes(){
+    var lista = Object.keys(pendentes).map(function(k){ return pendentes[k]; });
+    var cx = document.createElement("div");
+    cx.className = "leitor";
+    cx.innerHTML = '<div class="leitor-topo">' +
+        '<span class="leitor-nome">Fotos esperando cadastro</span>' +
+        '<button class="bt pequeno" id="fp-fechar">Fechar</button></div>' +
+      '<div class="leitor-corpo"><div class="c-fora">' +
+        '<h3>' + lista.length + (lista.length === 1 ? ' foto guardada' : ' fotos guardadas') + '</h3>' +
+        '<p class="vazio-txt">Estão no banco da estante. Peça na conversa com o Claude: ' +
+        '“cadastre as fotos pendentes”. Ele lê daqui, identifica cada livro e guarda ' +
+        'no nicho certo — as fotos somem sozinhas quando o livro entra.</p>' +
+        '<div class="fotos">' + lista.map(function(f){
+          return '<figure><img src="' + esc(f.foto) + '" alt="" loading="lazy">' +
+            '<figcaption>' + esc(f.quando || "") + (f.isbn ? '<br>' + esc(f.isbn) : '') +
+            '</figcaption></figure>'; }).join("") + '</div>' +
+        '<div class="acoes"><label class="bt forte" for="fp-nova">Fotografar outro livro</label>' +
+        '<input type="file" id="fp-nova" accept="image/*" capture="environment" hidden>' +
+        '<button class="bt" id="fp-apagar">Apagar todas</button></div>' +
+      '</div></div>';
+    document.body.appendChild(cx);
+    cx.querySelector("#fp-fechar").addEventListener("click", function(){ cx.remove(); });
+    cx.querySelector("#fp-nova").addEventListener("change", function(ev){
+      var f = ev.target.files[0]; ev.target.value = "";
+      if (!f) return;
+      cx.remove();
+      abrirLeituraCodigo(f);
+    });
+    cx.querySelector("#fp-apagar").addEventListener("click", function(){
+      Object.keys(pendentes).forEach(function(k){
+        if (db) db.doc("pendentes/" + k).delete().catch(function(){});
+        delete pendentes[k];
+      });
+      contarPendentes(); cx.remove();
+    });
+  }
+
+  /* ---- fotos guardadas para o Claude da conversa ----
+     A janela do aplicativo não passa imagem ao Claude de dentro da
+     página, mas o banco desta estante aceita — e o Claude da conversa lê
+     o banco. Então a foto é reduzida aqui, guardada como está, e ele
+     cadastra de lá: fotografar no celular continua sendo tudo o que se
+     faz. Cada documento do banco cabe 256 KB, então a foto entra
+     encolhida até caber com folga. */
+  var TETO_FOTO = 190000;         /* bytes de texto, já em base64 */
+  function encolherFoto(arquivo){
+    return new Promise(function(ok, falhou){
+      var url = URL.createObjectURL(arquivo);
+      var img = new Image();
+      img.onload = function(){
+        var lona = document.createElement("canvas"), tinta = lona.getContext("2d");
+        var tentativas = [[1280, 0.6], [1000, 0.55], [820, 0.5], [640, 0.45], [480, 0.4]];
+        var i, uri = "";
+        for (i = 0; i < tentativas.length; i++){
+          var lado = tentativas[i][0], q = tentativas[i][1];
+          var escala = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+          lona.width = Math.max(1, Math.round(img.naturalWidth * escala));
+          lona.height = Math.max(1, Math.round(img.naturalHeight * escala));
+          tinta.drawImage(img, 0, 0, lona.width, lona.height);
+          uri = lona.toDataURL("image/jpeg", q);
+          if (uri.length <= TETO_FOTO) break;
+        }
+        URL.revokeObjectURL(url);
+        if (!uri || uri.length > TETO_FOTO) falhou(new Error("foto grande demais"));
+        else ok({ uri: uri, largura: lona.width, altura: lona.height });
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); falhou(new Error("foto ilegível")); };
+      img.src = url;
+    });
+  }
+  function guardarPendente(arquivo, isbn){
+    if (!db) return Promise.reject(new Error("sem banco"));
+    return encolherFoto(arquivo).then(function(f){
+      var id = "foto-" + Date.now().toString(36) + Math.floor(Math.random() * 100);
+      var reg = { id:id, foto:f.uri, isbn:isbn || "", estado:"aguardando",
+        quando:new Date().toISOString().slice(0,16).replace("T", " "),
+        largura:f.largura, altura:f.altura };
+      return db.doc("pendentes/" + id).set(reg).then(function(){ return reg; });
+    });
+  }
+
   /* Quando a janela não deixa a foto passar, sobra o caminho de fora: na
      conversa com o Claude, a foto chega normalmente, e de lá ele escreve
      direto no banco desta estante. Isso não custa digitar título nenhum. */
@@ -1843,7 +1942,7 @@ button.link:hover{color:var(--acento)}
   }
 
   /* ---------------- a tela da leitura ---------------- */
-  function abrirLeituraCodigo(){
+  function abrirLeituraCodigo(fotoJaTirada){
     var cx = document.createElement("div");
     cx.className = "leitor codigo";
     cx.setAttribute("role", "dialog");
@@ -2284,6 +2383,9 @@ button.link:hover{color:var(--acento)}
         if (!aindaEmCartaz(vez)) return;
         var semImagem = e && (e.code === "images_unavailable" || e.code === "image_rejected");
         if (e && e.code === "images_unavailable") podeImagem = false;
+        /* a foto não chega ao Claude por aqui, mas cabe no banco: guarda,
+           que o Claude da conversa cadastra de lá */
+        if (semImagem && db){ guardouPendente(foto, isbn, vez); return; }
         corpo.innerHTML =
           '<div class="c-fora">' +
             '<h3>' + esc(semImagem ? "Esta visualização não deixa a foto chegar ao Claude."
@@ -2324,6 +2426,46 @@ button.link:hover{color:var(--acento)}
         ligarCopia(corpo, isbn);
         corpo.querySelector("#c-portitulo2").addEventListener("click", mandar);
         corpo.querySelector("#c-voltacam2").addEventListener("click", function(){ telaCamera(); });
+      });
+    }
+
+    /* ---- a foto fica guardada, esperando o Claude da conversa ---- */
+    function guardouPendente(arquivo, isbn, vez){
+      corpo.className = "leitor-corpo";
+      corpo.innerHTML = '<div class="c-fora"><h3>Guardando a foto…</h3>' +
+        '<p class="vazio-txt">Um instante.</p></div>';
+      guardarPendente(arquivo, isbn).then(function(reg){
+        if (!aindaEmCartaz(vez)) return;
+        pendentes[reg.id] = reg;
+        var quantas = Object.keys(pendentes).length;
+        corpo.innerHTML =
+          '<div class="c-fora">' +
+            '<img class="c-retrato" src="' + esc(reg.foto) + '" alt="a foto que você tirou">' +
+            '<h3>Foto guardada na estante.</h3>' +
+            '<p class="vazio-txt">Esta janela não passa imagens ao Claude, mas guarda: ' +
+            'a foto está no banco da estante, e o Claude da conversa lê de lá. ' +
+            'Diga a ele <strong>“cadastre as fotos pendentes”</strong> e o livro aparece aqui, ' +
+            'com autor, editora, sinopse e nicho — sem você digitar nada.</p>' +
+            '<p class="c-chat">' + quantas +
+            (quantas === 1 ? ' foto esperando' : ' fotos esperando') + '. ' +
+            'Pode fotografar os próximos agora e pedir tudo de uma vez.</p>' +
+            '<div class="acoes">' +
+              '<label class="bt forte" for="c-capa4">Fotografar o próximo</label>' +
+              '<input type="file" id="c-capa4" accept="image/*" capture="environment" hidden>' +
+              '<button class="bt" id="c-fim">Fechar</button>' +
+            '</div>' +
+          '</div>';
+        corpo.querySelector("#c-capa4").addEventListener("change", function(ev){
+          var f = ev.target.files[0]; ev.target.value = "";
+          if (f) guardouPendente(f, "", minhaVez());
+        });
+        corpo.querySelector("#c-fim").addEventListener("click", sair);
+      }).catch(function(){
+        if (!aindaEmCartaz(vez)) return;
+        corpo.innerHTML = '<div class="c-fora"><h3>Não consegui guardar a foto.</h3>' +
+          '<p class="vazio-txt">Tente uma foto mais fechada no livro, ou escreva o título.</p>' +
+          '<div class="acoes"><button class="bt forte" id="c-voltacam3">Voltar à câmera</button></div></div>';
+        corpo.querySelector("#c-voltacam3").addEventListener("click", function(){ telaCamera(); });
       });
     }
 
@@ -2587,7 +2729,9 @@ button.link:hover{color:var(--acento)}
       });
     }
 
-    if (!soLeitura() && fila.length) telaFila(); else telaCamera();
+    if (fotoJaTirada) guardouPendente(fotoJaTirada, "", minhaVez());
+    else if (!soLeitura() && fila.length) telaFila();
+    else telaCamera();
     contar();
   }
 
@@ -2701,6 +2845,17 @@ button.link:hover{color:var(--acento)}
         ACERVO = BASE.slice();
         Object.keys(vivos).forEach(function(k){ ACERVO.push(vivos[k]); });
         numerar(); recontar(); render();
+      }, function(){});
+      /* as fotos que esperam cadastro, e que somem quando o livro entra */
+      db.collection("pendentes").onSnapshot(function(snap){
+        pendentes = {};
+        snap.docs.forEach(function(doc){
+          if (!doc.exists) return;
+          var f = JSON.parse(JSON.stringify(doc.data() || {}));
+          f.id = doc.id;
+          if (f.estado !== "cadastrado") pendentes[doc.id] = f;
+        });
+        contarPendentes();
       }, function(){});
       db.collection("estado").onSnapshot(function(snap){
         snap.docs.forEach(function(doc){
