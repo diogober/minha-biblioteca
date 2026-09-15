@@ -120,7 +120,7 @@ textarea{width:100%; resize:vertical; line-height:1.55}
 .grupo{margin-bottom:34px}
 .grupo h2{font-size:19px; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
   padding-bottom:7px; border-bottom:1px solid var(--linha); margin-bottom:2px}
-.grupo h2 .end{font-family:"IBM Plex Mono",monospace; font-size:12px; color:#FBFAF6;
+.grupo h2 .end{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--fundo);
   background:var(--tinta2); padding:2px 6px; border-radius:2px; font-weight:400}
 .grupo h2 .qt{font-size:12.5px; color:var(--tinta3); font-family:Archivo,sans-serif; font-weight:400}
 .lista{list-style:none; margin:0; padding:0}
@@ -130,9 +130,11 @@ textarea{width:100%; resize:vertical; line-height:1.55}
 .item .num{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--tinta3);
   min-width:3em; text-align:right; font-variant-numeric:tabular-nums}
 .item .corpo{flex:1; min-width:0}
-.item .tit{font-family:Fraunces,Georgia,serif; font-size:16px; line-height:1.25}
-.item .meta{font-size:12.5px; color:var(--tinta2); margin-top:1px}
+.item .tit{display:block; font-family:Fraunces,Georgia,serif; font-size:16px; line-height:1.3}
+.item .meta{display:block; font-size:13px; color:var(--tinta2); margin-top:3px; line-height:1.9}
 .item .meta em{font-style:normal; color:var(--tinta3)}
+.item .marcas{display:block; margin-top:5px; line-height:2}
+.item .marcas .sinal:first-child{margin-left:0}
 .item.lido .tit{color:var(--tinta3)}
 .marca{flex:0 0 auto; border:1px solid var(--linha2); background:transparent; border-radius:100px;
   width:24px; height:24px; display:grid; place-items:center; padding:0; color:var(--tinta3)}
@@ -142,9 +144,10 @@ textarea{width:100%; resize:vertical; line-height:1.55}
 .item.lendo .marca{background:var(--azul); border-color:var(--azul); color:#FBFAF6}
 .item.lendo .marca .v-lendo{opacity:1}
 .item.lendo .tit{color:var(--tinta)}
-.sinal{font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--acento);
-  border:1px solid var(--acento); border-radius:2px; padding:0 4px; margin-left:6px; white-space:nowrap}
-.sinal.neutro{color:var(--tinta3); border-color:var(--linha2)}
+.sinal{display:inline-block; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--acento); border:1px solid var(--acento); border-radius:2px; padding:1px 6px;
+  margin:0 0 0 7px; white-space:nowrap; vertical-align:baseline}
+.sinal.neutro{color:var(--tinta2); border-color:var(--linha2)}
 
 /* ---------- painel ---------- */
 .fundo-painel{position:fixed; inset:0; background:rgba(20,21,16,.45); backdrop-filter:blur(2px); z-index:40}
@@ -292,8 +295,9 @@ button.link:hover{color:var(--acento)}
 .escolha b{display:block; font-family:Fraunces,Georgia,serif; font-size:18px; font-weight:600}
 .escolha span{display:block; font-size:13.5px; color:var(--tinta2); margin-top:5px; line-height:1.5}
 .escolha.discreta b{font-size:16px; color:var(--tinta2)}
-.sinal.nicho{color:#FBFAF6; background:var(--tinta2); border-color:var(--tinta2);
-  font-family:"IBM Plex Mono",monospace; letter-spacing:.02em}
+.sinal.primeiro{margin-left:0; margin-right:2px}
+.sinal.nicho{color:var(--fundo); background:var(--tinta2); border-color:var(--tinta2);
+  font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.02em; font-weight:500}
 .c-chat{font-size:13.5px; line-height:1.55; color:var(--tinta2); background:var(--superficie);
   border-left:2px solid var(--azul); padding:11px 13px; margin:14px 0 0}
 .c-chat .link{font-size:13.5px; color:var(--azul)}
@@ -699,6 +703,7 @@ button.link:hover{color:var(--acento)}
     $("#f-naolidos").setAttribute("aria-pressed", filtro.lidos === 1 ? "true" : "false");
     $("#f-lidos").setAttribute("aria-pressed", filtro.lidos === 2 ? "true" : "false");
     $("#f-notas").setAttribute("aria-pressed", filtro.notas ? "true" : "false");
+    $("#f-recentes").setAttribute("aria-pressed", filtro.recentes ? "true" : "false");
     var limpo = !filtro.nicho && !filtro.texto && !filtro.editora && !filtro.notas;
     $("#k-total").setAttribute("aria-pressed", (limpo && filtro.lidos === 0) ? "true" : "false");
     $("#k-lendo").setAttribute("aria-pressed", filtro.lidos === 3 ? "true" : "false");
@@ -735,7 +740,7 @@ button.link:hover{color:var(--acento)}
        justamente o que se quer saber ali. */
     function linha(l, comNicho){
       var e = est(l.id), marcas = "";
-      if (comNicho) marcas += '<span class="sinal nicho">' + nichoDe(l) + ' ' +
+      if (comNicho) marcas += '<span class="sinal nicho primeiro">' + nichoDe(l) + ' ' +
         esc(apelidoDe(nichoDe(l))) + '</span>';
       if (l.novo && !comNicho) marcas += '<span class="sinal novo">aquisição</span>';
       if (mudou(l)) marcas += '<span class="sinal novo">veio de ' + l.n + '</span>';
@@ -749,7 +754,8 @@ button.link:hover{color:var(--acento)}
         '<span class="num">' + (l.num || "") + '</span>' +
         '<span class="corpo"><span class="tit">' + esc(l.t || "(volume não identificado)") + '</span>' +
         '<span class="meta">' + esc(l.a || "autor a confirmar") +
-        (l.e ? ' &nbsp;·&nbsp; <em>' + esc(l.e) + '</em>' : '') + marcas + '</span></span>' +
+        (l.e ? ' &nbsp;·&nbsp; <em>' + esc(l.e) + '</em>' : '') + '</span>' +
+        (marcas ? '<span class="marcas">' + marcas + '</span>' : '') + '</span>' +
         '<button class="marca" data-marca="' + l.id + '" title="Clique para alternar: lendo, já li, não lido" ' +
         'aria-label="' + (e.lido ? "Já li" : (e.lendo ? "Lendo" : "Não lido")) + '">' +
         '<svg class="v-lido" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M3 8.5l3.4 3.4L13 5"/></svg>' +
