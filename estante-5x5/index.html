@@ -282,7 +282,7 @@ button.link:hover{color:var(--acento)}
 .c-retrato{display:block; max-width:200px; width:100%; border:1px solid var(--linha);
   border-radius:2px; margin:0 0 16px}
 .fotos{display:flex; flex-wrap:wrap; gap:12px; margin:14px 0 0}
-.fotos figure{margin:0; width:120px}
+.fotos figure{margin:0; width:96px}
 .fotos img{width:100%; border:1px solid var(--linha); border-radius:2px; display:block}
 .fotos figcaption{font-size:11px; color:var(--tinta3); margin-top:4px}
 .c-chat{font-size:13.5px; line-height:1.55; color:var(--tinta2); background:var(--superficie);
@@ -1740,7 +1740,7 @@ button.link:hover{color:var(--acento)}
     cx.setAttribute("aria-label", "Fotos esperando cadastro");
     cx.innerHTML = '<div class="leitor-topo">' +
         '<span class="leitor-nome">Fotos esperando cadastro</span>' +
-        '<button class="bt pequeno" id="fp-fechar">Fechar</button></div>' +
+        '<button class="bt pequeno" id="fp-saida">Fechar</button></div>' +
       '<div class="leitor-corpo" id="fp-corpo"></div>';
     document.body.appendChild(cx);
 
@@ -1751,12 +1751,21 @@ button.link:hover{color:var(--acento)}
     }
     function tecla(ev){ if (ev.key === "Escape") sair(); }
     document.addEventListener("keydown", tecla);
-    cx.querySelector("#fp-fechar").addEventListener("click", sair);
+    cx.querySelector("#fp-saida").addEventListener("click", sair);
 
     function pinta(){
       var lista = Object.keys(pendentes).map(function(k){ return pendentes[k]; });
       var corpo = cx.querySelector("#fp-corpo");
+      /* as saídas vêm antes das fotos: com a fila cheia o fim da página
+         fica longe, e o alto é justamente onde o balão de comentários do
+         artefato pousa */
       corpo.innerHTML = '<div class="c-fora">' +
+        '<div class="acoes" style="margin:0 0 18px">' +
+          '<button class="bt forte" id="fp-sair2">Fechar</button>' +
+          '<label class="bt" for="fp-nova">Fotografar outro livro</label>' +
+          '<input type="file" id="fp-nova" accept="image/*" capture="environment" hidden>' +
+          (lista.length ? '<button class="bt" id="fp-apagar">Apagar todas</button>' : '') +
+        '</div>' +
         (lista.length
           ? '<h3>' + lista.length + (lista.length === 1 ? ' foto guardada' : ' fotos guardadas') + '</h3>' +
             '<p class="vazio-txt">Estão no banco da estante. O Claude passa de tempos em ' +
@@ -1769,12 +1778,7 @@ button.link:hover{color:var(--acento)}
                 '</figcaption></figure>'; }).join("") + '</div>'
           : '<h3>Nenhuma foto esperando.</h3>' +
             '<p class="vazio-txt">Tudo o que você fotografou já virou volume na estante.</p>') +
-        '<div class="acoes">' +
-          '<label class="bt forte" for="fp-nova">Fotografar outro livro</label>' +
-          '<input type="file" id="fp-nova" accept="image/*" capture="environment" hidden>' +
-          (lista.length ? '<button class="bt" id="fp-apagar">Apagar todas</button>' : '') +
-          '<button class="bt" id="fp-fechar2">Fechar</button>' +
-        '</div></div>';
+        '</div>';
       corpo.querySelector("#fp-nova").addEventListener("change", function(ev){
         var f = ev.target.files[0]; ev.target.value = "";
         if (!f) return;
@@ -1789,7 +1793,7 @@ button.link:hover{color:var(--acento)}
         });
         contarPendentes(); pinta();
       });
-      corpo.querySelector("#fp-fechar2").addEventListener("click", sair);
+      corpo.querySelector("#fp-sair2").addEventListener("click", sair);
     }
 
     telaPendentes = pinta;

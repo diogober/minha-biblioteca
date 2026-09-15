@@ -124,9 +124,21 @@ const CLAUDE = `
   await pag.waitForSelector(".fotos img", { timeout: 8000 });
   console.log("galeria mostra", await pag.$$eval(".fotos img", e => e.length), "fotos");
 
-  /* o balão de comentários do artefato pousa no canto de cima e tapa o
-     Fechar de lá: tem de haver saída embaixo também */
-  if (!(await pag.$("#fp-fechar2"))) throw new Error("não há saída embaixo da galeria");
+  /* O balão de comentários do artefato pousa no canto de cima e pode tapar
+     o Fechar de lá — e, se alguém comentar no próprio botão, o alfinete
+     gruda nele. Então a saída principal tem de estar no corpo da página,
+     acima das fotos, e o botão do alto não pode ter id que um comentário
+     antigo reconheça. */
+  if (!(await pag.$("#fp-sair2"))) throw new Error("não há saída no corpo da galeria");
+  if (await pag.$("#fp-fechar")) throw new Error("o id que o comentário antigo ancorou voltou");
+  const ordem = await pag.evaluate(() => {
+    const corpo = document.querySelector("#fp-corpo");
+    const saida = corpo.querySelector("#fp-sair2");
+    const foto = corpo.querySelector(".fotos");
+    return foto ? (saida.compareDocumentPosition(foto) & Node.DOCUMENT_POSITION_FOLLOWING) > 0 : true;
+  });
+  if (!ordem) throw new Error("a saída ficou depois das fotos");
+  console.log("saída no corpo, antes das fotos: ok");
 
   /* o Claude cadastra: a galeria aberta tem de se repintar sozinha, sem
      ficar mostrando foto de livro que já entrou na estante */
@@ -142,7 +154,7 @@ const CLAUDE = `
     });
   console.log("depois de cadastrar, a galeria diz:", (await pag.textContent(".c-fora h3")).trim());
   if (await pag.$(".fotos img")) throw new Error("ainda mostra foto de livro já cadastrado");
-  await pag.click("#fp-fechar2");
+  await pag.click("#fp-sair2");
   if (await pag.$(".leitor")) throw new Error("o Fechar de baixo não fechou");
   console.log("saída de baixo: ok");
 
