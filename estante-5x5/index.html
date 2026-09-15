@@ -1737,9 +1737,10 @@ button.link:hover{color:var(--acento)}
         '<button class="bt pequeno" id="fp-fechar">Fechar</button></div>' +
       '<div class="leitor-corpo"><div class="c-fora">' +
         '<h3>' + lista.length + (lista.length === 1 ? ' foto guardada' : ' fotos guardadas') + '</h3>' +
-        '<p class="vazio-txt">Estão no banco da estante. Peça na conversa com o Claude: ' +
-        '“cadastre as fotos pendentes”. Ele lê daqui, identifica cada livro e guarda ' +
-        'no nicho certo — as fotos somem sozinhas quando o livro entra.</p>' +
+        '<p class="vazio-txt">Estão no banco da estante. O Claude passa de tempos em ' +
+        'tempos, lê cada foto, identifica o livro e guarda no nicho certo — as fotos ' +
+        'somem sozinhas quando o volume entra. Para não esperar, peça na conversa: ' +
+        '“cadastre as fotos pendentes”.</p>' +
         '<div class="fotos">' + lista.map(function(f){
           return '<figure><img src="' + esc(f.foto) + '" alt="" loading="lazy">' +
             '<figcaption>' + esc(f.quando || "") + (f.isbn ? '<br>' + esc(f.isbn) : '') +
@@ -2443,9 +2444,10 @@ button.link:hover{color:var(--acento)}
             '<img class="c-retrato" src="' + esc(reg.foto) + '" alt="a foto que você tirou">' +
             '<h3>Foto guardada na estante.</h3>' +
             '<p class="vazio-txt">Esta janela não passa imagens ao Claude, mas guarda: ' +
-            'a foto está no banco da estante, e o Claude da conversa lê de lá. ' +
-            'Diga a ele <strong>“cadastre as fotos pendentes”</strong> e o livro aparece aqui, ' +
-            'com autor, editora, sinopse e nicho — sem você digitar nada.</p>' +
+            'a foto está no banco da estante, e o Claude lê de lá. Ele passa de tempos ' +
+            'em tempos e cadastra sozinho — o livro aparece aqui com autor, editora, ' +
+            'sinopse e nicho, sem você digitar nada nem voltar à conversa. Para sair na ' +
+            'hora, é só pedir lá: <strong>“cadastre as fotos pendentes”</strong>.</p>' +
             '<p class="c-chat">' + quantas +
             (quantas === 1 ? ' foto esperando' : ' fotos esperando') + '. ' +
             'Pode fotografar os próximos agora e pedir tudo de uma vez.</p>' +
