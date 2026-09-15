@@ -64,6 +64,7 @@ const CLAUDE = `
           collection: function(nome){ return { onSnapshot: function(fn){
             ouvintes[nome] = fn; fn(instantaneo(nome)); return function(){}; } }; }
         });
+        window.__avisar = function(col){ if (ouvintes[col]) ouvintes[col](instantaneo(col)); };
         function instantaneo(col){
           var docs = Object.keys(window.__db)
             .filter(function(k){ return k.indexOf(col + "/") === 0; })
@@ -123,19 +124,27 @@ const CLAUDE = `
   await pag.waitForSelector(".fotos img", { timeout: 8000 });
   console.log("galeria mostra", await pag.$$eval(".fotos img", e => e.length), "fotos");
 
-  /* o Claude da conversa cadastra: a foto some da lista */
+  /* o balão de comentários do artefato pousa no canto de cima e tapa o
+     Fechar de lá: tem de haver saída embaixo também */
+  if (!(await pag.$("#fp-fechar2"))) throw new Error("não há saída embaixo da galeria");
+
+  /* o Claude cadastra: a galeria aberta tem de se repintar sozinha, sem
+     ficar mostrando foto de livro que já entrou na estante */
   await pag.evaluate(() => {
-    const k = Object.keys(window.__db).filter(k => k.startsWith("pendentes/"))[0];
-    window.__db[k].estado = "cadastrado";
-    delete window.__db[k];
+    Object.keys(window.__db).filter(k => k.startsWith("pendentes/"))
+      .forEach(k => delete window.__db[k]);
+    window.__avisar && window.__avisar("pendentes");
   });
-  await pag.click("#fp-fechar");
-  await pag.evaluate(() => {
-    const k = Object.keys(window.__db).filter(k => k.startsWith("pendentes/"))[0];
-    delete window.__db[k];
-  });
-  console.log("sobrou no banco:", await pag.evaluate(() =>
-    Object.keys(window.__db).filter(k => k.startsWith("pendentes/")).length), "foto(s)");
+  await pag.waitForSelector(".c-fora h3:has-text('Nenhuma foto esperando')", { timeout: 8000 })
+    .catch(async () => {
+      const t = await pag.textContent(".c-fora h3");
+      throw new Error("a galeria não se repintou: continua dizendo \"" + t.trim() + "\"");
+    });
+  console.log("depois de cadastrar, a galeria diz:", (await pag.textContent(".c-fora h3")).trim());
+  if (await pag.$(".fotos img")) throw new Error("ainda mostra foto de livro já cadastrado");
+  await pag.click("#fp-fechar2");
+  if (await pag.$(".leitor")) throw new Error("o Fechar de baixo não fechou");
+  console.log("saída de baixo: ok");
 
   if (erros.length){ console.log("ERROS:", erros); process.exitCode = 1; }
   await nav.close();

@@ -1728,42 +1728,72 @@ button.link:hover{color:var(--acento)}
     b.textContent = lista.length + (lista.length === 1
       ? " foto esperando o Claude" : " fotos esperando o Claude");
   }
+  /* A tela das fotos que esperam cadastro. Ela se repinta quando o banco
+     muda — senão fica mostrando foto de livro que já entrou na estante —
+     e tem saída em cima e embaixo: o balão de comentários do artefato
+     pousa justamente no canto de cima, e tapa o botão de lá. */
+  var telaPendentes = null;
   function verPendentes(){
-    var lista = Object.keys(pendentes).map(function(k){ return pendentes[k]; });
     var cx = document.createElement("div");
     cx.className = "leitor";
+    cx.setAttribute("role", "dialog");
+    cx.setAttribute("aria-label", "Fotos esperando cadastro");
     cx.innerHTML = '<div class="leitor-topo">' +
         '<span class="leitor-nome">Fotos esperando cadastro</span>' +
         '<button class="bt pequeno" id="fp-fechar">Fechar</button></div>' +
-      '<div class="leitor-corpo"><div class="c-fora">' +
-        '<h3>' + lista.length + (lista.length === 1 ? ' foto guardada' : ' fotos guardadas') + '</h3>' +
-        '<p class="vazio-txt">Estão no banco da estante. O Claude passa de tempos em ' +
-        'tempos, lê cada foto, identifica o livro e guarda no nicho certo — as fotos ' +
-        'somem sozinhas quando o volume entra. Para não esperar, peça na conversa: ' +
-        '“cadastre as fotos pendentes”.</p>' +
-        '<div class="fotos">' + lista.map(function(f){
-          return '<figure><img src="' + esc(f.foto) + '" alt="" loading="lazy">' +
-            '<figcaption>' + esc(f.quando || "") + (f.isbn ? '<br>' + esc(f.isbn) : '') +
-            '</figcaption></figure>'; }).join("") + '</div>' +
-        '<div class="acoes"><label class="bt forte" for="fp-nova">Fotografar outro livro</label>' +
-        '<input type="file" id="fp-nova" accept="image/*" capture="environment" hidden>' +
-        '<button class="bt" id="fp-apagar">Apagar todas</button></div>' +
-      '</div></div>';
+      '<div class="leitor-corpo" id="fp-corpo"></div>';
     document.body.appendChild(cx);
-    cx.querySelector("#fp-fechar").addEventListener("click", function(){ cx.remove(); });
-    cx.querySelector("#fp-nova").addEventListener("change", function(ev){
-      var f = ev.target.files[0]; ev.target.value = "";
-      if (!f) return;
+
+    function sair(){
+      telaPendentes = null;
       cx.remove();
-      abrirLeituraCodigo(f);
-    });
-    cx.querySelector("#fp-apagar").addEventListener("click", function(){
-      Object.keys(pendentes).forEach(function(k){
-        if (db) db.doc("pendentes/" + k).delete().catch(function(){});
-        delete pendentes[k];
+      document.removeEventListener("keydown", tecla);
+    }
+    function tecla(ev){ if (ev.key === "Escape") sair(); }
+    document.addEventListener("keydown", tecla);
+    cx.querySelector("#fp-fechar").addEventListener("click", sair);
+
+    function pinta(){
+      var lista = Object.keys(pendentes).map(function(k){ return pendentes[k]; });
+      var corpo = cx.querySelector("#fp-corpo");
+      corpo.innerHTML = '<div class="c-fora">' +
+        (lista.length
+          ? '<h3>' + lista.length + (lista.length === 1 ? ' foto guardada' : ' fotos guardadas') + '</h3>' +
+            '<p class="vazio-txt">Estão no banco da estante. O Claude passa de tempos em ' +
+            'tempos, lê cada foto, identifica o livro e guarda no nicho certo — as fotos ' +
+            'somem daqui sozinhas quando o volume entra. Para não esperar, comente na ' +
+            'estante (o balão no alto) pedindo para cadastrar.</p>' +
+            '<div class="fotos">' + lista.map(function(f){
+              return '<figure><img src="' + esc(f.foto) + '" alt="" loading="lazy">' +
+                '<figcaption>' + esc(f.quando || "") + (f.isbn ? '<br>' + esc(f.isbn) : '') +
+                '</figcaption></figure>'; }).join("") + '</div>'
+          : '<h3>Nenhuma foto esperando.</h3>' +
+            '<p class="vazio-txt">Tudo o que você fotografou já virou volume na estante.</p>') +
+        '<div class="acoes">' +
+          '<label class="bt forte" for="fp-nova">Fotografar outro livro</label>' +
+          '<input type="file" id="fp-nova" accept="image/*" capture="environment" hidden>' +
+          (lista.length ? '<button class="bt" id="fp-apagar">Apagar todas</button>' : '') +
+          '<button class="bt" id="fp-fechar2">Fechar</button>' +
+        '</div></div>';
+      corpo.querySelector("#fp-nova").addEventListener("change", function(ev){
+        var f = ev.target.files[0]; ev.target.value = "";
+        if (!f) return;
+        sair();
+        abrirLeituraCodigo(f);
       });
-      contarPendentes(); cx.remove();
-    });
+      var apagar = corpo.querySelector("#fp-apagar");
+      if (apagar) apagar.addEventListener("click", function(){
+        Object.keys(pendentes).forEach(function(k){
+          if (db) db.doc("pendentes/" + k).delete().catch(function(){});
+          delete pendentes[k];
+        });
+        contarPendentes(); pinta();
+      });
+      corpo.querySelector("#fp-fechar2").addEventListener("click", sair);
+    }
+
+    telaPendentes = pinta;
+    pinta();
   }
 
   /* ---- fotos guardadas para o Claude da conversa ----
@@ -2030,11 +2060,13 @@ button.link:hover{color:var(--acento)}
           (soLeitura() && fila.length
             ? '<button class="bt pequeno" id="c-verfila">Ver os ' + fila.length + ' lidos</button>'
             : '') +
+          '<button class="bt pequeno" id="c-sair">Fechar</button>' +
         '</div>';
       corpo.querySelector("#c-foto").addEventListener("change", function(ev){
         var f = ev.target.files[0]; ev.target.value = "";
         if (f) lerDaFoto(f);
       });
+      corpo.querySelector("#c-sair").addEventListener("click", sair);
       var capa0 = corpo.querySelector("#c-capa0");
       if (capa0) capa0.addEventListener("change", function(ev){
         var f = ev.target.files[0]; ev.target.value = "";
@@ -2858,6 +2890,7 @@ button.link:hover{color:var(--acento)}
           if (f.estado !== "cadastrado") pendentes[doc.id] = f;
         });
         contarPendentes();
+        if (telaPendentes) telaPendentes();
       }, function(){});
       db.collection("estado").onSnapshot(function(snap){
         snap.docs.forEach(function(doc){
