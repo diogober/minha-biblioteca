@@ -4,6 +4,13 @@
    npm i playwright; CHROME=/caminho/do/chrome node sem-foto.teste.js */
 const { chromium } = require("playwright");
 
+/* o leitor agora mora dentro de "+ Livro novo" */
+async function abrirLeitor(pag){
+  await pag.click("#b-novo");
+  await pag.waitForSelector("#q-codigo", { timeout: 8000 });
+  await pag.click("#q-codigo");
+}
+
 const CLAUDE_SEM_IMAGEM = `
   window.__perguntas = [];
   window.claude = { use: function(nome){
@@ -42,7 +49,7 @@ const CLAUDE_SEM_IMAGEM = `
   await pag.goto("file://" + __dirname + "/index.html", { waitUntil: "domcontentloaded" });
   await pag.waitForSelector(".item");
 
-  await pag.click("#b-codigo");
+  await abrirLeitor(pag);
   await pag.click("#c-digitar");
   await pag.fill("#c-num", "9788535944679");
   await pag.click("#c-ok");

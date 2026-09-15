@@ -3,6 +3,13 @@
    foto passar.
    npm i playwright; CHROME=/caminho/do/chrome node capa.teste.js */
 const { chromium } = require("playwright");
+
+/* o leitor agora mora dentro de "+ Livro novo" */
+async function abrirLeitor(pag){
+  await pag.click("#b-novo");
+  await pag.waitForSelector("#q-codigo", { timeout: 8000 });
+  await pag.click("#q-codigo");
+}
 const fs = require("fs");
 
 /* um PNG qualquer serve: quem "lê" a capa no teste é o Claude de mentira */
@@ -75,7 +82,7 @@ async function cena(nav, passaImagem, teste){
 
   /* ---- 1. onde a foto passa: a capa identifica o livro ---- */
   await cena(nav, true, async pag => {
-    await pag.click("#b-codigo");
+    await abrirLeitor(pag);
     /* no navegador de teste não há câmera, então a tela que aparece é a
        que explica isso — e é lá que o botão da capa tem de estar */
     await pag.waitForSelector(".c-fora #c-capa3", { state: "attached", timeout: 10000 });
@@ -97,7 +104,7 @@ async function cena(nav, passaImagem, teste){
   /* ---- 2. onde a foto não passa: a página guarda a foto para o Claude
        da conversa, em vez de mandar o dono digitar ---- */
   await cena(nav, false, async pag => {
-    await pag.click("#b-codigo");
+    await abrirLeitor(pag);
     await pag.waitForSelector(".c-fora #c-capa3", { state: "attached", timeout: 10000 });
     await pag.setInputFiles(".c-fora #c-capa3", foto);
     await pag.waitForSelector(".c-retrato", { timeout: 20000 });

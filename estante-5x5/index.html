@@ -285,6 +285,15 @@ button.link:hover{color:var(--acento)}
 .fotos figure{margin:0; width:96px}
 .fotos img{width:100%; border:1px solid var(--linha); border-radius:2px; display:block}
 .fotos figcaption{font-size:11px; color:var(--tinta3); margin-top:4px}
+.escolhas{display:grid; gap:10px; margin-top:20px}
+.escolha{display:block; width:100%; text-align:left; background:var(--superficie);
+  border:1px solid var(--linha2); border-radius:3px; padding:15px 16px}
+.escolha:hover{border-color:var(--acento)}
+.escolha b{display:block; font-family:Fraunces,Georgia,serif; font-size:18px; font-weight:600}
+.escolha span{display:block; font-size:13.5px; color:var(--tinta2); margin-top:5px; line-height:1.5}
+.escolha.discreta b{font-size:16px; color:var(--tinta2)}
+.sinal.nicho{color:#FBFAF6; background:var(--tinta2); border-color:var(--tinta2);
+  font-family:"IBM Plex Mono",monospace; letter-spacing:.02em}
 .c-chat{font-size:13.5px; line-height:1.55; color:var(--tinta2); background:var(--superficie);
   border-left:2px solid var(--azul); padding:11px 13px; margin:14px 0 0}
 .c-chat .link{font-size:13.5px; color:var(--azul)}
@@ -332,10 +341,10 @@ button.link:hover{color:var(--acento)}
     <button class="pilula" id="f-naolidos" aria-pressed="false">Não lidos</button>
     <button class="pilula" id="f-lidos" aria-pressed="false">Já lidos</button>
     <button class="pilula" id="f-notas" aria-pressed="false">Com anotação</button>
+    <button class="pilula" id="f-recentes" aria-pressed="false">Cadastrados por último</button>
     <button class="pilula" id="f-limpar">Limpar</button>
-    <button class="pilula forte" id="b-codigo">Ler código de barras</button>
     <button class="pilula sinal-foto" id="b-pendentes" hidden></button>
-    <button class="pilula" id="b-novo">+ Livro novo</button>
+    <button class="pilula forte" id="b-novo">+ Livro novo</button>
     <span class="contagem" id="contagem"></span>
   </div>
 
@@ -370,7 +379,7 @@ button.link:hover{color:var(--acento)}
   var estado = {};            // id -> {lido, comentario, fichas:[]}
   var db = null, assets = null;
   var pendentes = {};        /* fotos guardadas esperando o Claude da conversa */
-  var filtro = { nicho:"", texto:"", editora:"", lidos:0, notas:0 };
+  var filtro = { nicho:"", texto:"", editora:"", lidos:0, notas:0, recentes:0 };
   var abertoId = null, primeira = true;
 
   var $ = function(s){ return document.querySelector(s); };
@@ -722,43 +731,64 @@ button.link:hover{color:var(--acento)}
     });
     ordem.sort();
 
+    /* uma linha da lista. Na ordem de cadastro o nicho vai junto: é
+       justamente o que se quer saber ali. */
+    function linha(l, comNicho){
+      var e = est(l.id), marcas = "";
+      if (comNicho) marcas += '<span class="sinal nicho">' + nichoDe(l) + ' ' +
+        esc(apelidoDe(nichoDe(l))) + '</span>';
+      if (l.novo && !comNicho) marcas += '<span class="sinal novo">aquisição</span>';
+      if (mudou(l)) marcas += '<span class="sinal novo">veio de ' + l.n + '</span>';
+      if (l.x) marcas += '<span class="sinal">a identificar</span>';
+      if (!l.e) marcas += '<span class="sinal neutro">editora a confirmar</span>';
+      if (e.fichamento) marcas += '<span class="sinal">fichado</span>';
+      if (e.comentario || (e.fichas && e.fichas.length)) marcas += '<span class="sinal neutro">anotado</span>';
+      if (e.arquivos && e.arquivos.length) marcas += '<span class="sinal neutro">' + e.arquivos.length +
+        (e.arquivos.length > 1 ? ' arquivos' : ' arquivo') + '</span>';
+      return '<li class="item' + (e.lido ? " lido" : (e.lendo ? " lendo" : "")) + '" data-id="' + l.id + '">' +
+        '<span class="num">' + (l.num || "") + '</span>' +
+        '<span class="corpo"><span class="tit">' + esc(l.t || "(volume não identificado)") + '</span>' +
+        '<span class="meta">' + esc(l.a || "autor a confirmar") +
+        (l.e ? ' &nbsp;·&nbsp; <em>' + esc(l.e) + '</em>' : '') + marcas + '</span></span>' +
+        '<button class="marca" data-marca="' + l.id + '" title="Clique para alternar: lendo, já li, não lido" ' +
+        'aria-label="' + (e.lido ? "Já li" : (e.lendo ? "Lendo" : "Não lido")) + '">' +
+        '<svg class="v-lido" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M3 8.5l3.4 3.4L13 5"/></svg>' +
+        '<svg class="v-lendo" viewBox="0 0 16 16" fill="currentColor" stroke="none"><path d="M4.5 2h7a.5.5 0 01.5.5v11.2a.4.4 0 01-.64.32L8 11.3l-3.36 2.72A.4.4 0 014 13.7V2.5a.5.5 0 01.5-.5z"/></svg>' +
+        '</button></li>';
+    }
+
     var out = [];
-    ordem.forEach(function(nic){
-      var meta = NICHOS.filter(function(n){ return n.end === nic; })[0] || {};
-      out.push('<section class="grupo"><h2><span class="end">' + nic + '</span> ' +
-        esc(meta.apelido || "") + ' <span class="qt">' + porNicho[nic].length + ' volumes</span></h2><ul class="lista">');
-      var secAtual = null;
-      porNicho[nic].forEach(function(l){
-        if (l.s && l.s !== secAtual){ secAtual = l.s; }
-        var e = est(l.id);
-        var marcas = "";
-        if (l.novo) marcas += '<span class="sinal novo">aquisição</span>';
-        if (mudou(l)) marcas += '<span class="sinal novo">veio de ' + l.n + '</span>';
-        if (l.x) marcas += '<span class="sinal">a identificar</span>';
-        if (!l.e) marcas += '<span class="sinal neutro">editora a confirmar</span>';
-        if (e.fichamento) marcas += '<span class="sinal">fichado</span>';
-        if (e.comentario || (e.fichas && e.fichas.length)) marcas += '<span class="sinal neutro">anotado</span>';
-        if (e.arquivos && e.arquivos.length) marcas += '<span class="sinal neutro">' + e.arquivos.length +
-          (e.arquivos.length > 1 ? ' arquivos' : ' arquivo') + '</span>';
-        out.push('<li class="item' + (e.lido ? " lido" : (e.lendo ? " lendo" : "")) + '" data-id="' + l.id + '">' +
-          '<span class="num">' + (l.num || "") + '</span>' +
-          '<span class="corpo"><span class="tit">' + esc(l.t || "(volume não identificado)") + '</span>' +
-          '<span class="meta">' + esc(l.a || "autor a confirmar") +
-          (l.e ? ' &nbsp;·&nbsp; <em>' + esc(l.e) + '</em>' : '') + marcas + '</span></span>' +
-          '<button class="marca" data-marca="' + l.id + '" title="Clique para alternar: lendo, já li, não lido" ' +
-          'aria-label="' + (e.lido ? "Já li" : (e.lendo ? "Lendo" : "Não lido")) + '">' +
-          '<svg class="v-lido" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M3 8.5l3.4 3.4L13 5"/></svg>' +
-          '<svg class="v-lendo" viewBox="0 0 16 16" fill="currentColor" stroke="none"><path d="M4.5 2h7a.5.5 0 01.5.5v11.2a.4.4 0 01-.64.32L8 11.3l-3.36 2.72A.4.4 0 014 13.7V2.5a.5.5 0 01.5-.5z"/></svg>' +
-          '</button></li>');
+    if (filtro.recentes){
+      /* os volumes que entraram depois da estante ter sido desenhada,
+         do mais novo para o mais velho, com o nicho de cada um à vista */
+      var novos = vis.filter(function(l){ return l.novo; }).slice().sort(function(a, b){
+        var x = (b.entrada || "") + "|" + (b.num || 0), y = (a.entrada || "") + "|" + (a.num || 0);
+        return (b.num || 0) - (a.num || 0) || (x < y ? -1 : x > y ? 1 : 0);
       });
-      out.push('</ul></section>');
-    });
+      if (novos.length){
+        out.push('<section class="grupo"><h2>Cadastrados por último ' +
+          '<span class="qt">' + novos.length + (novos.length === 1 ? ' volume' : ' volumes') +
+          ', do mais recente para o mais antigo</span></h2><ul class="lista">');
+        novos.forEach(function(l){ out.push(linha(l, true)); });
+        out.push('</ul></section>');
+      }
+      vis = novos;
+    } else {
+      ordem.forEach(function(nic){
+        var meta = NICHOS.filter(function(n){ return n.end === nic; })[0] || {};
+        out.push('<section class="grupo"><h2><span class="end">' + nic + '</span> ' +
+          esc(meta.apelido || "") + ' <span class="qt">' + porNicho[nic].length + ' volumes</span></h2><ul class="lista">');
+        porNicho[nic].forEach(function(l){ out.push(linha(l, false)); });
+        out.push('</ul></section>');
+      });
+    }
     if (!vis.length){
       var recado = "Nada encontrado com esses filtros.";
       if (termosBusca) recado = "Nada encontrado para \u201c" + esc(filtro.texto) +
         "\u201d, nem por aproximação da grafia.";
       else if (filtro.lidos === 3) recado = "Nenhum livro em leitura no momento. Clique uma vez no círculo ao lado de um título para marcá-lo como lendo.";
       else if (filtro.lidos === 2) recado = "Nenhum livro marcado como lido ainda. Clique duas vezes no círculo ao lado de um título, ou use o botão dentro da ficha.";
+      else if (filtro.recentes) recado = "Nenhum volume cadastrado depois que a estante foi desenhada. Os que você fotografar ou digitar aparecem aqui, com o nicho de cada um.";
       out.push('<p class="vazio-txt">' + recado + '</p>');
     }
     $("#resultado").innerHTML = out.join("");
@@ -1248,7 +1278,7 @@ button.link:hover{color:var(--acento)}
   $("#editora").addEventListener("change", function(e){ filtro.editora = e.target.value; render(); });
   function verLista(modo){
     filtro.lidos = (filtro.lidos === modo) ? 0 : modo;
-    filtro.nicho = ""; filtro.texto = ""; filtro.editora = ""; filtro.notas = 0;
+    filtro.nicho = ""; filtro.texto = ""; filtro.editora = ""; filtro.notas = 0; filtro.recentes = 0;
     $("#busca").value = ""; $("#editora").value = "";
     render();
     document.getElementById("resultado").scrollIntoView({behavior:"smooth", block:"start"});
@@ -1261,19 +1291,71 @@ button.link:hover{color:var(--acento)}
   $("#f-lidos").addEventListener("click", function(){ filtro.lidos = filtro.lidos === 2 ? 0 : 2; render(); });
   $("#f-notas").addEventListener("click", function(){ filtro.notas = filtro.notas ? 0 : 1; render(); });
   $("#f-limpar").addEventListener("click", function(){
-    filtro = { nicho:"", texto:"", editora:"", lidos:0, notas:0 };
+    filtro = { nicho:"", texto:"", editora:"", lidos:0, notas:0, recentes:0 };
     $("#busca").value = ""; $("#editora").value = ""; render();
   });
-  $("#b-novo").addEventListener("click", function(){ abrirNovo(); });
-  $("#b-codigo").addEventListener("click", function(){ abrirLeituraCodigo(); });
-  $("#b-pendentes").addEventListener("click", verPendentes);
+  $("#b-novo").addEventListener("click", function(){ comoCadastrar(); });
+  $("#f-recentes").addEventListener("click", function(){
+    filtro.recentes = filtro.recentes ? 0 : 1;
+    if (filtro.recentes){ filtro.nicho = ""; filtro.texto = ""; $("#busca").value = ""; }
+    render();
+    document.getElementById("resultado").scrollIntoView({behavior:"smooth", block:"start"});
+  });
+
+  /* Livro novo, e só: a escolha de como cadastrar fica aqui dentro, em
+     vez de ocupar mais um botão na barra de filtros. */
+  function comoCadastrar(){
+    var fundo = document.createElement("div"); fundo.className = "fundo-painel";
+    var p = document.createElement("div"); p.className = "painel";
+    p.setAttribute("role", "dialog"); p.setAttribute("aria-label", "Livro novo");
+    p.innerHTML = '<button class="fechar" id="q-fechar" aria-label="Fechar">&times;</button>' +
+      '<h2>Livro novo na estante</h2>' +
+      '<p class="creditos">De que jeito você quer cadastrar?</p>' +
+      '<div class="escolhas">' +
+        '<button class="escolha" id="q-foto">' +
+          '<b>Fotografar a capa</b>' +
+          '<span>Eu leio o título e o autor na foto, escolho o nicho que combina e ' +
+          'guardo — sem você digitar nada.</span>' +
+        '</button>' +
+        '<button class="escolha" id="q-mao">' +
+          '<b>Digitar na mão</b>' +
+          '<span>O formulário de sempre: título, autor, editora e o nicho, ' +
+          'do seu jeito.</span>' +
+        '</button>' +
+        '<button class="escolha discreta" id="q-codigo">' +
+          '<b>Ler o código de barras</b>' +
+          '<span>Pela câmera ou pelo ISBN impresso na contracapa.</span>' +
+        '</button>' +
+      '</div>';
+    document.body.appendChild(fundo); document.body.appendChild(p);
+    var sair = function(){ fundo.remove(); p.remove(); document.removeEventListener("keydown", tecla); };
+    function tecla(ev){ if (ev.key === "Escape") sair(); }
+    document.addEventListener("keydown", tecla);
+    fundo.addEventListener("click", sair);
+    p.querySelector("#q-fechar").addEventListener("click", sair);
+    p.querySelector("#q-mao").addEventListener("click", function(){ sair(); abrirNovo(); });
+    p.querySelector("#q-codigo").addEventListener("click", function(){ sair(); abrirLeituraCodigo(); });
+    p.querySelector("#q-foto").addEventListener("click", function(){
+      sair();
+      var entrada = document.createElement("input");
+      entrada.type = "file"; entrada.accept = "image/*"; entrada.capture = "environment";
+      entrada.addEventListener("change", function(){
+        var f = entrada.files[0];
+        if (f) abrirLeituraCodigo(f, "capa");
+      });
+      entrada.click();
+    });
+  }
   /* códigos lidos na aba do navegador esperando cadastro: o botão avisa */
+  /* os códigos lidos na aba do navegador, esperando cadastro: agora o
+     recado sai no mesmo aviso das fotos, ao lado do "+ Livro novo" */
   function contarFilaNoBotao(){
-    var n = filaLer().length, b = $("#b-codigo");
-    if (plataformaRespondeu && !sample && !db){ b.textContent = "Ler código de barras"; return; }
-    b.textContent = n ? "Cadastrar " + n + (n === 1 ? " código lido" : " códigos lidos")
-                      : "Ler código de barras";
-    b.setAttribute("aria-pressed", n ? "true" : "false");
+    var n = filaLer().length, b = $("#b-pendentes");
+    if (!b || !NO_QUADRO || (plataformaRespondeu && !sample && !db)) return;
+    if (!n || Object.keys(pendentes).length) return;   /* as fotos mandam no aviso */
+    b.hidden = false;
+    b.textContent = "Cadastrar " + n + (n === 1 ? " código lido" : " códigos lidos");
+    b.onclick = function(){ abrirLeituraCodigo(); };
   }
 
   /* ---------------- acrescentar livro ----------------
@@ -1347,7 +1429,7 @@ button.link:hover{color:var(--acento)}
     aviso.textContent = "guardado";
     fechar();
     /* mostra o volume recém-cadastrado, em vez de um filtro invisível */
-    filtro = { nicho:"", texto:t, editora:"", lidos:0, notas:0 };
+    filtro = { nicho:"", texto:t, editora:"", lidos:0, notas:0, recentes:0 };
     $("#busca").value = t; render();
   }
 
@@ -1723,10 +1805,11 @@ button.link:hover{color:var(--acento)}
   function contarPendentes(){
     var b = $("#b-pendentes"), lista = Object.keys(pendentes);
     if (!b) return;
-    if (!lista.length){ b.hidden = true; return; }
+    if (!lista.length){ b.hidden = true; b.onclick = null; contarFilaNoBotao(); return; }
     b.hidden = false;
     b.textContent = lista.length + (lista.length === 1
       ? " foto esperando o Claude" : " fotos esperando o Claude");
+    b.onclick = verPendentes;
   }
   /* A tela das fotos que esperam cadastro. Ela se repinta quando o banco
      muda — senão fica mostrando foto de livro que já entrou na estante —
@@ -1783,7 +1866,7 @@ button.link:hover{color:var(--acento)}
         var f = ev.target.files[0]; ev.target.value = "";
         if (!f) return;
         sair();
-        abrirLeituraCodigo(f);
+        abrirLeituraCodigo(f, "capa");
       });
       var apagar = corpo.querySelector("#fp-apagar");
       if (apagar) apagar.addEventListener("click", function(){
@@ -1977,7 +2060,7 @@ button.link:hover{color:var(--acento)}
   }
 
   /* ---------------- a tela da leitura ---------------- */
-  function abrirLeituraCodigo(fotoJaTirada){
+  function abrirLeituraCodigo(fotoJaTirada, modo){
     var cx = document.createElement("div");
     cx.className = "leitor codigo";
     cx.setAttribute("role", "dialog");
@@ -2495,7 +2578,7 @@ button.link:hover{color:var(--acento)}
           '</div>';
         corpo.querySelector("#c-capa4").addEventListener("change", function(ev){
           var f = ev.target.files[0]; ev.target.value = "";
-          if (f) guardouPendente(f, "", minhaVez());
+          if (f) pelaCapa(f, "");     /* tenta o Claude de novo; se não passar, guarda */
         });
         corpo.querySelector("#c-fim").addEventListener("click", sair);
       }).catch(function(){
@@ -2767,7 +2850,8 @@ button.link:hover{color:var(--acento)}
       });
     }
 
-    if (fotoJaTirada) guardouPendente(fotoJaTirada, "", minhaVez());
+    if (fotoJaTirada && modo === "capa") pelaCapa(fotoJaTirada, "");
+    else if (fotoJaTirada) guardouPendente(fotoJaTirada, "", minhaVez());
     else if (!soLeitura() && fila.length) telaFila();
     else telaCamera();
     contar();

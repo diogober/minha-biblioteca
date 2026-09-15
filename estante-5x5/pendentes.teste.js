@@ -3,6 +3,13 @@
    bastante para caber, para o Claude da conversa cadastrar de lá.
    npm i playwright; CHROME=/caminho/do/chrome node pendentes.teste.js */
 const { chromium } = require("playwright");
+
+/* o leitor agora mora dentro de "+ Livro novo" */
+async function abrirLeitor(pag){
+  await pag.click("#b-novo");
+  await pag.waitForSelector("#q-codigo", { timeout: 8000 });
+  await pag.click("#q-codigo");
+}
 const fs = require("fs");
 const zlib = require("zlib");
 
@@ -91,7 +98,7 @@ const CLAUDE = `
   await pag.goto("file://" + __dirname + "/index.html", { waitUntil: "domcontentloaded" });
   await pag.waitForSelector(".item");
 
-  await pag.click("#b-codigo");
+  await abrirLeitor(pag);
   await pag.waitForSelector(".c-fora #c-capa3", { state: "attached", timeout: 10000 });
   await pag.setInputFiles(".c-fora #c-capa3", foto);
   await pag.waitForSelector(".c-retrato", { timeout: 20000 });

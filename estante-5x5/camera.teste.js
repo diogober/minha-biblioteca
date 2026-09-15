@@ -5,6 +5,13 @@
    de verdade — vídeo → varredura → confirmação em dois quadros →
    desligar a câmera. */
 const { chromium } = require("playwright");
+
+/* o leitor agora mora dentro de "+ Livro novo" */
+async function abrirLeitor(pag){
+  await pag.click("#b-novo");
+  await pag.waitForSelector("#q-codigo", { timeout: 8000 });
+  await pag.click("#q-codigo");
+}
 const FINGE = require("fs").readFileSync(__dirname + "/pagina.teste.js","utf8")
   .split("const FINGE_CLAUDE = `")[1].split("`;")[0];
 
@@ -64,7 +71,7 @@ const CAMERA = `
   pag.on("pageerror", e => erros.push("pageerror: " + e.message));
   await pag.goto(process.env.SERVIDOR || "http://localhost:8731/index.html");
   await pag.waitForSelector(".item");
-  await pag.click("#b-codigo");
+  await abrirLeitor(pag);
   await pag.waitForSelector("#c-video");
   await pag.waitForFunction(() => {
     const r = document.querySelector("#c-recado");

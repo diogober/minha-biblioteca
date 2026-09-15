@@ -5,6 +5,13 @@
    estante e no banco. Também testa a leitura de uma foto de código de
    barras desenhada na hora. */
 const { chromium } = require("playwright");
+
+/* o leitor agora mora dentro de "+ Livro novo" */
+async function abrirLeitor(pag){
+  await pag.click("#b-novo");
+  await pag.waitForSelector("#q-codigo", { timeout: 8000 });
+  await pag.click("#q-codigo");
+}
 const fs = require("fs");
 const path = require("path");
 
@@ -139,7 +146,7 @@ const FINGE_CLAUDE = `
   console.log("volumes na lista:", totalAntes);
 
   /* ---- 1. digitar o ISBN ---- */
-  await pag.click("#b-codigo");
+  await abrirLeitor(pag);
   await pag.waitForSelector(".leitor");
   await pag.click("#c-digitar");
   await pag.fill("#c-num", "978-85-359-1484-9");
@@ -187,7 +194,7 @@ const FINGE_CLAUDE = `
   await pag.click("#p-fechar");
 
   /* ---- 2. ler o código de uma foto ---- */
-  await pag.click("#b-codigo");
+  await abrirLeitor(pag);
   await pag.waitForSelector(".leitor");
   await pag.waitForSelector("#c-foto, #c-foto2", { state: "attached", timeout: 5000 });
   const entrada = (await pag.$("#c-foto")) || (await pag.$("#c-foto2"));
@@ -205,7 +212,7 @@ const FINGE_CLAUDE = `
 
   /* ---- 3a. "guardar sozinho" não guarda sozinho o que já está lá ---- */
   await pag.evaluate(() => { const r = document.querySelector(".recado"); if (r) r.remove(); });
-  await pag.click("#b-codigo");
+  await abrirLeitor(pag);
   await pag.waitForSelector(".leitor");
   await pag.check("#c-sozinho");
   await pag.click("#c-digitar");
@@ -242,7 +249,7 @@ const FINGE_CLAUDE = `
   await pag2.goto("file://" + path.join(RAIZ, "index.html"));
   await pag2.waitForSelector(".item");
   await pag2.evaluate(() => localStorage.removeItem("estante-fila-codigos"));
-  await pag2.click("#b-codigo");
+  await abrirLeitor(pag2);
   await pag2.click("#c-digitar");
   await pag2.fill("#c-num", "9788535914849");
   await pag2.click("#c-ok");

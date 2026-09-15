@@ -34,6 +34,15 @@ Fonte do artefato publicado em
   entrega câmera em origem segura; `CHROME=/caminho/do/chrome` se o
   navegador estiver fora do lugar de sempre.
 
+## Cadastro de livro novo
+
+O botão "+ Livro novo" é a única porta: dentro dele ficam **Fotografar a
+capa** (o caminho de sempre), **Digitar na mão** e **Ler o código de
+barras**. A pílula "Cadastrados por último" mostra, numa lista só, os
+volumes que entraram depois de a estante ter sido desenhada — do mais
+recente para o mais antigo, cada um com o crachá do nicho onde foi
+guardado, que é como se confere a escolha do Claude.
+
 ## Leitura do código de barras
 
 Cadastro de livro novo pelo código de barras da contracapa:

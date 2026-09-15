@@ -2,6 +2,13 @@
    só um deles se resolve nos ajustes do aparelho.
    npm i playwright; CHROME=/caminho/do/chrome node camera-negada.teste.js */
 const { chromium } = require("playwright");
+
+/* o leitor agora mora dentro de "+ Livro novo" */
+async function abrirLeitor(pag){
+  await pag.click("#b-novo");
+  await pag.waitForSelector("#q-codigo", { timeout: 8000 });
+  await pag.click("#q-codigo");
+}
 const FINGE = require("fs").readFileSync(__dirname + "/pagina.teste.js","utf8")
   .split("const FINGE_CLAUDE = `")[1].split("`;")[0];
 
@@ -13,7 +20,7 @@ async function cena(nome, guiao, esperado){
   const pag = await ctx.newPage();
   await pag.goto("file://" + __dirname + "/index.html", { waitUntil: "domcontentloaded" });
   await pag.waitForSelector(".item");
-  await pag.click("#b-codigo");
+  await abrirLeitor(pag);
   await pag.waitForSelector(".c-fora h3", { timeout: 8000 });
   const titulo = (await pag.textContent(".c-fora h3")).trim();
   const texto = (await pag.textContent(".c-fora .vazio-txt")).trim();

@@ -4,6 +4,13 @@
    Precisa da página servida por http (python3 -m http.server 8731).
    npm i playwright; CHROME=/caminho/do/chrome node aba-avulsa.teste.js */
 const { chromium } = require("playwright");
+
+/* o leitor agora mora dentro de "+ Livro novo" */
+async function abrirLeitor(pag){
+  await pag.click("#b-novo");
+  await pag.waitForSelector("#q-codigo", { timeout: 8000 });
+  await pag.click("#q-codigo");
+}
 const FINGE = require("fs").readFileSync(__dirname + "/pagina.teste.js","utf8")
   .split("const FINGE_CLAUDE = `")[1].split("`;")[0];
 const CAMERA = require("fs").readFileSync(__dirname + "/camera.teste.js","utf8")
@@ -54,11 +61,14 @@ const ENDERECO = process.env.SERVIDOR || "http://localhost:8731/index.html";
   const dentro = quadro.frameLocator("#estante");
   /* o botão já está no HTML: espera a lista, que só existe depois do script */
   await dentro.locator(".item").first().waitFor({ timeout: 15000 });
-  const rotulo = (await dentro.locator("#b-codigo").textContent()).trim();
-  console.log("botão da estante:", rotulo);
-  if (!/1 código lido/.test(rotulo)) throw new Error("o botão não avisou da fila: " + rotulo);
+  /* o aviso da fila mora agora na pílula de pendências, ao lado do
+     "+ Livro novo" — o botão do código saiu da barra de filtros */
+  await dentro.locator("#b-pendentes").waitFor({ timeout: 10000 });
+  const rotulo = (await dentro.locator("#b-pendentes").textContent()).trim();
+  console.log("aviso da estante:", rotulo);
+  if (!/1 código lido/.test(rotulo)) throw new Error("a estante não avisou da fila: " + rotulo);
 
-  await dentro.locator("#b-codigo").click();
+  await dentro.locator("#b-pendentes").click();
   await dentro.locator(".c-fora h3").waitFor({ timeout: 8000 });
   const cabecalho = (await dentro.locator(".c-fora h3").textContent()).trim();
   console.log("ao abrir:", cabecalho);
